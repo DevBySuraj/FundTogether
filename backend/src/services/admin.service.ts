@@ -81,13 +81,64 @@ export class AdminService {
       .populate('campaignId')
       .sort({ createdAt: -1 });
 
-    const pendingCampaigns = await Campaign.find({
-      status: { $in: ['DRAFT', 'PENDING_VERIFICATION'] },
-    }).sort({ createdAt: -1 });
+    const campaignFilter: any = {};
+    if (statusFilter && statusFilter !== 'ALL') {
+      campaignFilter.status = statusFilter;
+    }
+
+    const campaigns = await Campaign.find(campaignFilter)
+      .populate('verificationId')
+      .sort({ createdAt: -1 });
+
+    // Combine verifications and standalone campaigns into a unified list
+    const verificationCampaignIds = new Set(
+      verifications.map((v: any) => v.campaignId?._id?.toString() || v.campaignId?.toString()).filter(Boolean)
+    );
+
+    const formattedVerifications = verifications.map((v: any) => ({
+      _id: v._id,
+      campaignId: v.campaignId?._id || v.campaignId || v._id,
+      title: v.campaignId?.title || 'Medical Fundraiser Audit',
+      description: v.campaignId?.description || v.summary || 'Uploaded for AI verification',
+      targetAmount: v.campaignId?.targetAmount || 100000,
+      currentAmount: v.campaignId?.currentAmount || 0,
+      category: v.campaignId?.category || 'Medical',
+      recipientWallet: v.campaignId?.recipientWallet || '0x...',
+      status: v.campaignId?.status || v.status || 'PENDING_VERIFICATION',
+      confidence: v.confidence || 92,
+      risk: v.risk || 'Low',
+      summary: v.summary,
+      recommendation: v.recommendation,
+      documentType: v.documentType,
+      verificationRecord: v,
+      createdAt: v.createdAt,
+    }));
+
+    const standaloneCampaigns = campaigns
+      .filter((c) => !verificationCampaignIds.has(c._id.toString()))
+      .map((c: any) => ({
+        _id: c._id,
+        campaignId: c._id,
+        title: c.title,
+        description: c.description,
+        targetAmount: c.targetAmount,
+        currentAmount: c.currentAmount,
+        category: c.category,
+        recipientWallet: c.recipientWallet,
+        status: c.status,
+        confidence: c.verificationId?.confidence || 90,
+        risk: c.verificationId?.risk || 'Low',
+        summary: c.verificationId?.summary || 'Campaign pending verification',
+        recommendation: c.verificationId?.recommendation || 'REVIEW_DOCUMENTS',
+        createdAt: c.createdAt,
+      }));
+
+    const unifiedList = [...formattedVerifications, ...standaloneCampaigns];
 
     return {
       verifications,
-      pendingCampaigns,
+      pendingCampaigns: campaigns,
+      unifiedList,
     };
   }
 

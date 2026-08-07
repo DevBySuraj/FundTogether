@@ -66,7 +66,7 @@ export class AdminController {
     try {
       const { status } = req.query;
       const data = await adminService.getPendingCampaigns(status as string);
-      return sendSuccess(res, data.verifications, 'Pending verifications retrieved successfully');
+      return sendSuccess(res, data.unifiedList, 'Pending verifications retrieved successfully');
     } catch (error: any) {
       return sendError(res, error.message || 'Failed to fetch verifications', 500);
     }
