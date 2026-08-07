@@ -16,30 +16,38 @@ async function seedAdmin() {
       // Ignore if index doesn't exist
     }
 
+    const hashedPassword = await bcrypt.hash(env.adminPassword, 10);
+
     const existingAdmin = await User.findOne({
       $or: [{ email: env.adminEmail.toLowerCase() }, { role: 'admin' }],
     });
 
+    let adminUser: any = null;
+
     if (existingAdmin) {
-      console.log(`[SEED] Admin account already exists (${existingAdmin.email}). Skipping seed creation.`);
-      await mongoose.disconnect();
-      process.exit(0);
+      existingAdmin.name = env.adminName;
+      existingAdmin.email = env.adminEmail.toLowerCase();
+      existingAdmin.password = hashedPassword;
+      existingAdmin.role = 'admin';
+      existingAdmin.isVerified = true;
+      await existingAdmin.save();
+      adminUser = existingAdmin;
+      console.log(`[SEED] Admin account updated successfully! (${adminUser.email})`);
+    } else {
+      adminUser = await User.create({
+        name: env.adminName,
+        email: env.adminEmail.toLowerCase(),
+        password: hashedPassword,
+        role: 'admin',
+        isVerified: true,
+      });
+      console.log(`[SEED] Admin account created successfully!`);
     }
 
-    const hashedPassword = await bcrypt.hash(env.adminPassword, 10);
-
-    const adminUser = await User.create({
-      name: env.adminName,
-      email: env.adminEmail.toLowerCase(),
-      password: hashedPassword,
-      role: 'admin',
-      isVerified: true,
-    });
-
-    console.log(`[SEED] Admin account created successfully!`);
-    console.log(`       Name:  ${adminUser.name}`);
-    console.log(`       Email: ${adminUser.email}`);
-    console.log(`       Role:  ${adminUser.role}`);
+    console.log(`       Name:     ${adminUser.name}`);
+    console.log(`       Email:    ${adminUser.email}`);
+    console.log(`       Password: ${env.adminPassword}`);
+    console.log(`       Role:     ${adminUser.role}`);
 
     await mongoose.disconnect();
     process.exit(0);
