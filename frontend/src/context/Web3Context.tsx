@@ -9,8 +9,8 @@ interface Web3ContextType {
   isConnecting: boolean;
   error: string | null;
   connectWallet: () => Promise<void>;
-  connectWalletWithRole: (role: 'user' | 'donor') => Promise<void>;
-  setRole: (role: 'user' | 'donor') => void;
+  connectWalletWithRole: (role: 'user' | 'donor' | 'admin') => Promise<void>;
+  setRole: (role: 'user' | 'donor' | 'admin') => void;
   disconnectWallet: () => void;
 }
 
@@ -49,15 +49,26 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const setRole = (role: 'user' | 'donor') => {
+  const setRole = (role: 'user' | 'donor' | 'admin') => {
     if (user) {
       const updated = { ...user, role };
       setUser(updated);
       localStorage.setItem('trustchain_user', JSON.stringify(updated));
+    } else {
+      const demoAccount = '0x71c7656ec7ab88b098defb751B7401b5f6d8976f';
+      const newUser: User = {
+        id: 'demo-user-123',
+        walletAddress: demoAccount,
+        role,
+      };
+      setUser(newUser);
+      setAccount(demoAccount);
+      localStorage.setItem('trustchain_user', JSON.stringify(newUser));
+      localStorage.setItem('trustchain_token', 'demo_jwt_token_123');
     }
   };
 
-  const connectWalletWithRole = async (role: 'user' | 'donor') => {
+  const connectWalletWithRole = async (role: 'user' | 'donor' | 'admin') => {
     await connectWallet();
     setRole(role);
   };

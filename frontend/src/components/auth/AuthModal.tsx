@@ -4,126 +4,241 @@ import { useWeb3 } from '../../context/Web3Context';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenAdminModal?: () => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdminModal }) => {
   const { account, user, connectWalletWithRole, setRole, disconnectWallet, isConnecting } = useWeb3();
-  const [activeTab, setActiveTab] = useState<'user' | 'donor'>(user?.role === 'user' ? 'user' : 'donor');
+  const [activeTab, setActiveTab] = useState<'user' | 'donor' | 'admin'>(
+    user?.role === 'admin' ? 'admin' : user?.role === 'user' ? 'user' : 'donor'
+  );
+
+  // Email / Password Form State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSignIn = async (role: 'user' | 'donor') => {
-    setActiveTab(role);
-    await connectWalletWithRole(role);
-    onClose();
-  };
-
-  const handleSwitchRole = (role: 'user' | 'donor') => {
+  const handleRoleSelect = (role: 'user' | 'donor' | 'admin') => {
     setActiveTab(role);
     setRole(role);
+
+    // Pre-fill email for demo convenience
+    if (role === 'user') setEmail('recipient@fundtogether.org');
+    else if (role === 'donor') setEmail('donor@fundtogether.org');
+    else if (role === 'admin') setEmail('admin@fundtogether.org');
+    setPassword('demo12345');
+  };
+
+  const handleWalletSignIn = async (role: 'user' | 'donor' | 'admin') => {
+    setActiveTab(role);
+    await connectWalletWithRole(role);
+    if (role === 'admin' && onOpenAdminModal) {
+      onClose();
+      onOpenAdminModal();
+    } else {
+      onClose();
+    }
+  };
+
+  const handleEmailFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginMessage(`Signed in successfully as ${activeTab.toUpperCase()} (${email})!`);
+
+    connectWalletWithRole(activeTab);
+
+    setTimeout(() => {
+      onClose();
+      if (activeTab === 'admin' && onOpenAdminModal) {
+        onOpenAdminModal();
+      }
+    }, 1200);
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-content brutal-modal" style={{ maxWidth: '560px' }}>
+      <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content brutal-modal">
           {/* Header */}
           <div className="modal-header d-flex justify-content-between align-items-center">
-            <h4 className="modal-title fw-black text-uppercase mb-0">
-              <i className="bi bi-box-arrow-in-right text-primary me-2"></i> TrustChain Portal Sign In
-            </h4>
+            <div>
+              <h4 className="modal-title fw-black text-uppercase mb-0">
+                <i className="bi bi-shield-lock-fill text-primary me-2"></i> FundTogether Multi-Portal Sign In
+              </h4>
+              <small className="text-secondary fw-bold">Select your role: Recipient, Donor, or Platform Administrator</small>
+            </div>
             <button className="btn-close" onClick={onClose}></button>
           </div>
 
           <div className="modal-body p-4">
-            {/* Role Tabs */}
-            <div className="d-flex gap-2 mb-4">
-              <button
-                type="button"
-                onClick={() => handleSwitchRole('user')}
-                className={`btn brutal-btn flex-fill py-3 fw-bold ${activeTab === 'user' ? 'brutal-btn-lime' : ''}`}
-              >
-                <i className="bi bi-person-workspace me-2 fs-5"></i>
-                Recipient (My Campaigns)
-              </button>
+            {/* 3-Role Tabs */}
+            <div className="row g-2 mb-4">
+              <div className="col-4">
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('user')}
+                  className={`btn brutal-btn w-100 py-3 fw-bold ${activeTab === 'user' ? 'brutal-btn-lime' : ''}`}
+                >
+                  <i className="bi bi-person-workspace d-block fs-4 mb-1"></i>
+                  Recipient
+                </button>
+              </div>
 
-              <button
-                type="button"
-                onClick={() => handleSwitchRole('donor')}
-                className={`btn brutal-btn flex-fill py-3 fw-bold ${activeTab === 'donor' ? 'brutal-btn-cyan' : ''}`}
-              >
-                <i className="bi bi-heart-fill me-2 fs-5 text-danger"></i>
-                Donor (All Campaigns)
-              </button>
+              <div className="col-4">
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('donor')}
+                  className={`btn brutal-btn w-100 py-3 fw-bold ${activeTab === 'donor' ? 'brutal-btn-cyan' : ''}`}
+                >
+                  <i className="bi bi-heart-fill d-block fs-4 mb-1 text-danger"></i>
+                  Donor
+                </button>
+              </div>
+
+              <div className="col-4">
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelect('admin')}
+                  className={`btn brutal-btn w-100 py-3 fw-bold ${activeTab === 'admin' ? 'brutal-btn-yellow' : ''}`}
+                >
+                  <i className="bi bi-shield-check d-block fs-4 mb-1 text-primary"></i>
+                  Admin
+                </button>
+              </div>
             </div>
 
-            {/* Recipient Details */}
-            {activeTab === 'user' ? (
+            {/* Role Feature Descriptions */}
+            {activeTab === 'user' && (
               <div className="brutal-card p-3 bg-light mb-4">
-                <h5 className="fw-bold mb-2 text-dark">
-                  <i className="bi bi-shield-check text-success me-2"></i> Recipient Portal Mode
-                </h5>
-                <ul className="small text-secondary fw-bold mb-0 ps-3">
-                  <li className="mb-1">Shows ONLY campaigns created by your account.</li>
-                  <li className="mb-1">Upload hospital/NGO verification documents for Gemini AI OCR audit.</li>
-                  <li className="mb-1">Receive direct ₹ INR donations to your verified account.</li>
-                </ul>
-              </div>
-            ) : (
-              <div className="brutal-card p-3 bg-light mb-4">
-                <h5 className="fw-bold mb-2 text-dark">
-                  <i className="bi bi-heart-pulse-fill text-danger me-2"></i> Donor Portal Mode
-                </h5>
-                <ul className="small text-secondary fw-bold mb-0 ps-3">
-                  <li className="mb-1">Shows ALL published & verified campaigns open for donations.</li>
-                  <li className="mb-1">Inspect Gemini AI trust scores, SHA-256 fingerprints & IPFS proofs.</li>
-                  <li className="mb-1">Make 1-click transparent ₹ INR donations.</li>
-                </ul>
+                <h6 className="fw-bold text-dark mb-1">
+                  <i className="bi bi-person-workspace text-success me-2"></i> Campaign Recipient Portal
+                </h6>
+                <p className="small text-secondary mb-0">
+                  Create medical/emergency fundraisers, upload hospital bill proofs for Google Gemini AI OCR analysis, and manage your recipient account.
+                </p>
               </div>
             )}
 
+            {activeTab === 'donor' && (
+              <div className="brutal-card p-3 bg-light mb-4">
+                <h6 className="fw-bold text-dark mb-1">
+                  <i className="bi bi-heart-fill text-danger me-2"></i> Donor Portal
+                </h6>
+                <p className="small text-secondary mb-0">
+                  Browse all verified campaigns, inspect Gemini AI authenticity scores & IPFS hashes, and make direct ₹ INR donations via UPI, Cards, or Web3 Wallet.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'admin' && (
+              <div className="brutal-card p-3 bg-light mb-4">
+                <h6 className="fw-bold text-dark mb-1">
+                  <i className="bi bi-shield-lock-fill text-primary me-2"></i> Platform Administrator Audit Portal
+                </h6>
+                <p className="small text-secondary mb-0">
+                  Review pending AI document audits, inspect OCR text extractions, override high-risk flags, and issue final approvals/rejections for published campaigns.
+                </p>
+              </div>
+            )}
+
+            {loginMessage && (
+              <div className="alert alert-success fw-bold small mb-3 text-center">
+                <i className="bi bi-check-circle-fill me-2"></i> {loginMessage}
+              </div>
+            )}
+
+            {/* Already Signed In Status */}
             {account ? (
-              <div className="text-center py-3 border border-3 border-dark bg-white">
+              <div className="text-center py-4 border border-3 border-dark bg-white">
                 <i className="bi bi-check-circle-fill text-success fs-1 mb-2"></i>
-                <h5 className="fw-bold mb-1">Signed In Successfully</h5>
-                <p className="font-monospace fw-bold text-primary mb-3">{account}</p>
-                <span className="brutal-badge badge-lime mb-3">
-                  Active Mode: {activeTab === 'user' ? 'Campaign Recipient (My Campaigns)' : 'Donor (All Campaigns)'}
+                <h5 className="fw-bold mb-1">Currently Signed In</h5>
+                <p className="font-monospace fw-bold text-primary mb-2">{account}</p>
+                <span className="brutal-badge badge-lime mb-3 text-uppercase">
+                  Role: {user?.role || activeTab}
                 </span>
-                <div className="d-flex gap-2 mt-3 px-3">
-                  <button onClick={onClose} className="btn brutal-btn brutal-btn-lime flex-fill">
-                    View {activeTab === 'user' ? 'My Campaigns' : 'All Published Campaigns'}
+
+                <div className="d-flex gap-2 mt-3 px-4">
+                  <button onClick={onClose} className="btn brutal-btn brutal-btn-lime flex-fill py-2 fw-bold">
+                    Continue to Application
                   </button>
-                  <button onClick={disconnectWallet} className="btn brutal-btn brutal-btn-magenta">
-                    Disconnect
+                  <button onClick={disconnectWallet} className="btn brutal-btn brutal-btn-magenta py-2 fw-bold">
+                    Disconnect Session
                   </button>
                 </div>
               </div>
             ) : (
               <div>
+                {/* 1. Quick Web3 / Wallet Sign In */}
                 <button
                   type="button"
-                  onClick={() => handleSignIn(activeTab)}
+                  onClick={() => handleWalletSignIn(activeTab)}
                   disabled={isConnecting}
-                  className={`btn brutal-btn w-100 py-3 fs-5 fw-bold text-uppercase mb-3 ${
-                    activeTab === 'user' ? 'brutal-btn-lime' : 'brutal-btn-cyan'
+                  className={`btn brutal-btn w-100 py-3 fs-5 fw-bold text-uppercase mb-4 ${
+                    activeTab === 'user'
+                      ? 'brutal-btn-lime'
+                      : activeTab === 'donor'
+                      ? 'brutal-btn-cyan'
+                      : 'brutal-btn-yellow'
                   }`}
                 >
                   {isConnecting ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2"></span>
-                      Signing In...
+                      Connecting Session...
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-person-fill me-2"></i> Enter as {activeTab === 'user' ? 'Campaign Recipient' : 'Donor'}
+                      <i className="bi bi-wallet2 me-2"></i> Fast Sign In as {activeTab.toUpperCase()}
                     </>
                   )}
                 </button>
 
-                <p className="text-center small text-secondary fw-bold mb-0">
-                  Powered by Google Gemini AI OCR trust scoring & Pinata IPFS.
-                </p>
+                <div className="text-center mb-4">
+                  <span className="bg-light px-3 py-1 fw-bold border border-2 border-dark text-secondary small">
+                    OR SIGN IN WITH EMAIL & PASSWORD
+                  </span>
+                </div>
+
+                {/* 2. Email & Password Form */}
+                <form onSubmit={handleEmailFormSubmit}>
+                  <div className="mb-3">
+                    <label className="form-label fw-bold small">Email Address</label>
+                    <input
+                      type="email"
+                      className="form-control fw-bold"
+                      required
+                      placeholder={
+                        activeTab === 'user'
+                          ? 'recipient@fundtogether.org'
+                          : activeTab === 'donor'
+                          ? 'donor@fundtogether.org'
+                          : 'admin@fundtogether.org'
+                      }
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="form-label fw-bold small">Password</label>
+                    <input
+                      type="password"
+                      className="form-control fw-bold"
+                      required
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn brutal-btn w-100 py-3 fw-bold fs-6 text-uppercase"
+                  >
+                    <i className="bi bi-box-arrow-in-right me-2"></i> Submit {activeTab.toUpperCase()} Credentials
+                  </button>
+                </form>
               </div>
             )}
           </div>

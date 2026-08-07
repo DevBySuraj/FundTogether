@@ -81,6 +81,7 @@ export const AppContent: React.FC = () => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onOpenAdminModal={() => setIsAdminModalOpen(true)}
       />
     </div>
   );
