@@ -12,7 +12,7 @@ export const AiReportCard: React.FC<AiReportCardProps> = ({ result }) => {
     <div className="ai-report-box">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h6 className="fw-bold mb-0">
-          <i className="bi bi-robot text-primary"></i> GEMINI AI OCR VERIFICATION RESULT
+          <i className="bi bi-robot text-primary"></i> AI DOCUMENT VERIFICATION REPORT
         </h6>
         <span className="brutal-badge badge-lime">{result.risk || 'Low'} Risk</span>
       </div>

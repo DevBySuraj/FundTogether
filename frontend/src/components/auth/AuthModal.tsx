@@ -138,7 +138,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
                   <i className="bi bi-person-workspace text-success me-2"></i> Recipient Portal Mode
                 </h6>
                 <p className="small text-secondary mb-0">
-                  Create medical fundraisers, upload document proofs for Gemini AI OCR audit, and manage campaigns.
+                  Create medical fundraisers, upload document proofs for AI verification audit, and manage campaigns.
                 </p>
               </div>
             )}
@@ -149,7 +149,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
                   <i className="bi bi-heart-fill text-danger me-2"></i> Donor Portal Mode
                 </h6>
                 <p className="small text-secondary mb-0">
-                  Browse verified campaigns, inspect Gemini AI trust scores, and make direct ₹ INR donations via UPI or Cards.
+                  Browse verified campaigns, inspect AI authenticity scores, and make direct ₹ INR donations via UPI or Cards.
                 </p>
               </div>
             )}

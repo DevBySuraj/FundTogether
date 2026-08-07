@@ -119,7 +119,7 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
               <h4 className="modal-title fw-black text-uppercase mb-0">
                 <i className="bi bi-shield-check text-success me-2"></i> Start Verified Campaign
               </h4>
-              <small className="text-secondary fw-bold">Step-by-step campaign setup & Gemini AI OCR document verification</small>
+              <small className="text-secondary fw-bold">Step-by-step campaign setup with AI-powered document verification</small>
             </div>
             <button className="btn-close" onClick={handleCloseAndReset}></button>
           </div>
@@ -135,7 +135,7 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
               <div>
                 <div className="alert alert-success fw-bold d-flex align-items-center gap-2 mb-3">
                   <i className="bi bi-check-circle-fill fs-4 text-success"></i>
-                  <span>CAMPAIGN SUBMITTED & ANALYZED BY GOOGLE GEMINI AI ENGINE</span>
+                  <span>CAMPAIGN SUBMITTED & VERIFIED BY AI DOCUMENT ANALYSIS ENGINE</span>
                 </div>
 
                 <AiReportCard result={aiResult} />
@@ -288,7 +288,7 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
                 {isSubmitting && (
                   <div className="alert alert-info fw-bold mb-3 text-center">
                     <div className="spinner-border spinner-border-sm me-2" role="status"></div>
-                    Executing Gemini AI Vision OCR inspection & saving campaign...
+                    Running AI document inspection & saving campaign...
                   </div>
                 )}
 
@@ -305,11 +305,11 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
                     {isSubmitting ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2"></span>
-                        Analyzing via Gemini AI...
+                        Running AI Verification...
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-shield-check me-2"></i> Submit & Run Gemini AI Verification
+                        <i className="bi bi-shield-check me-2"></i> Submit & Verify Document
                       </>
                     )}
                   </button>

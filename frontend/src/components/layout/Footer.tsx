@@ -15,7 +15,7 @@ export const Footer: React.FC = () => {
           {/* Tagline */}
           <div className="col-12 col-md-4 d-flex justify-content-center">
             <span style={{ fontSize: '0.8rem', color: '#666', fontWeight: 600 }}>
-              Transparent Donations &amp; Gemini AI Verification
+              Transparent Donations &amp; AI-Powered Document Verification
             </span>
           </div>
 

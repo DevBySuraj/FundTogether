@@ -10,14 +10,6 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCreateModal, onExploreClick })
     <section className="hero container-fluid px-3 px-md-5">
       <div className="row justify-content-center w-100">
         <div className="col-12 col-xl-10 text-center">
-          <div className="mb-3">
-            <span className="brutal-badge badge-yellow py-2 px-3" style={{ fontSize: 'clamp(0.65rem, 2vw, 0.85rem)' }}>
-              <i className="bi bi-magic"></i>
-              <span className="d-none d-sm-inline">POWERED BY GOOGLE GEMINI AI & PINATA IPFS</span>
-              <span className="d-sm-none">GEMINI AI & IPFS</span>
-            </span>
-          </div>
-
           <h1 className="hero-title">
             Donate with Proof
             <br />
@@ -25,7 +17,7 @@ export const Hero: React.FC<HeroProps> = ({ onOpenCreateModal, onExploreClick })
           </h1>
 
           <p className="hero-subtitle text-secondary mt-3 px-2">
-            Transparent fundraising verified by Google Gemini AI OCR, stored permanently on Pinata IPFS, with 100% transparent Indian Rupee (₹ INR) direct donations.
+            Transparent fundraising backed by AI-powered document verification, permanent decentralized storage, and 100% traceable Indian Rupee (₹ INR) direct donations.
           </p>
 
           <div className="d-flex justify-content-center flex-wrap gap-3 mt-4">

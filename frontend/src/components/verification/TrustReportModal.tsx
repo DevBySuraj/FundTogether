@@ -57,7 +57,7 @@ export const TrustReportModal: React.FC<TrustReportModalProps> = ({ campaignId, 
 
                 {report.aiVerificationDetails && (
                   <div className="brutal-card p-3 mb-3 bg-light">
-                    <h6 className="fw-bold"><i className="bi bi-robot"></i> Gemini AI Analysis</h6>
+                    <h6 className="fw-bold"><i className="bi bi-robot"></i> AI Document Analysis</h6>
                     <p className="small text-secondary mb-2">{report.aiVerificationDetails.summary}</p>
                     <div className="d-flex gap-2 flex-wrap">
                       <span className="brutal-badge badge-cyan">Confidence: {report.aiVerificationDetails.confidence}%</span>
