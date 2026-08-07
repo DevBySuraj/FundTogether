@@ -71,6 +71,8 @@ export interface TrustReport {
 export interface User {
   id?: string;
   _id?: string;
+  email?: string;
+  name?: string;
   walletAddress: string;
   role: 'user' | 'donor' | 'admin';
 }

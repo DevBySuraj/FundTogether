@@ -11,6 +11,7 @@ interface Web3ContextType {
   connectWallet: () => Promise<void>;
   connectWalletWithRole: (role: 'user' | 'donor' | 'admin') => Promise<void>;
   setRole: (role: 'user' | 'donor' | 'admin') => void;
+  setUserSession: (user: User, token: string) => void;
   disconnectWallet: () => void;
 }
 
@@ -29,23 +30,16 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(savedUser);
         setUser(parsed);
-        setAccount(parsed.walletAddress);
+        setAccount(parsed.walletAddress || '0x71c7656ec7ab88b098defb751B7401b5f6d8976f');
       } catch (err) {
         localStorage.removeItem('trustchain_user');
         localStorage.removeItem('trustchain_token');
+        setUser(null);
+        setAccount(null);
       }
     } else {
-      // Default to Donor role initially so all published campaigns are visible
-      const demoAccount = '0x71c7656ec7ab88b098defb751B7401b5f6d8976f';
-      const demoUser: User = {
-        id: 'demo-user-123',
-        walletAddress: demoAccount,
-        role: 'donor',
-      };
-      setUser(demoUser);
-      setAccount(demoAccount);
-      localStorage.setItem('trustchain_user', JSON.stringify(demoUser));
-      localStorage.setItem('trustchain_token', 'demo_jwt_token_123');
+      setUser(null);
+      setAccount(null);
     }
   }, []);
 
@@ -54,18 +48,14 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       const updated = { ...user, role };
       setUser(updated);
       localStorage.setItem('trustchain_user', JSON.stringify(updated));
-    } else {
-      const demoAccount = '0x71c7656ec7ab88b098defb751B7401b5f6d8976f';
-      const newUser: User = {
-        id: 'demo-user-123',
-        walletAddress: demoAccount,
-        role,
-      };
-      setUser(newUser);
-      setAccount(demoAccount);
-      localStorage.setItem('trustchain_user', JSON.stringify(newUser));
-      localStorage.setItem('trustchain_token', 'demo_jwt_token_123');
     }
+  };
+
+  const setUserSession = (loggedUser: User, token: string) => {
+    setUser(loggedUser);
+    setAccount(loggedUser.walletAddress || '0x71c7656ec7ab88b098defb751B7401b5f6d8976f');
+    localStorage.setItem('trustchain_user', JSON.stringify(loggedUser));
+    localStorage.setItem('trustchain_token', token);
   };
 
   const connectWalletWithRole = async (role: 'user' | 'donor' | 'admin') => {
@@ -79,7 +69,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       if (!(window as any).ethereum) {
-        // Fallback demo wallet mode if MetaMask extension is not installed
         const demoAccount = '0x71c7656ec7ab88b098defb751B7401b5f6d8976f';
         setAccount(demoAccount);
         const demoUser: User = {
@@ -103,15 +92,12 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       const selectedAccount = accounts[0].toLowerCase();
       setAccount(selectedAccount);
 
-      // 1. Fetch challenge nonce from backend
       const nonceRes = await authAPI.connectWallet(selectedAccount);
       const nonce = nonceRes.data.nonce;
 
-      // 2. Request user signature via Ethers signer
       const signer = await provider.getSigner();
       const signature = await signer.signMessage(nonce);
 
-      // 3. Verify signature on backend & obtain JWT
       const verifyRes = await authAPI.verifySignature(selectedAccount, signature);
 
       const token = verifyRes.data.token;
@@ -155,6 +141,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         connectWallet,
         connectWalletWithRole,
         setRole,
+        setUserSession,
         disconnectWallet,
       }}
     >
