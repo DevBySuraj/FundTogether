@@ -1,9 +1,11 @@
 import { Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env';
-import { AuthenticatedRequest, AuthUserPayload } from '../types';
+import { verifyJwt } from '../utils/jwt';
+import { AuthenticatedRequest } from '../types';
 import { sendError } from '../utils/response';
 
+/**
+ * Authentication Middleware: Protects endpoints by verifying JWT token
+ */
 export const authMiddleware = (
   req: AuthenticatedRequest,
   res: Response,
@@ -18,20 +20,26 @@ export const authMiddleware = (
   const token = authHeader.split(' ')[1];
 
   try {
-    // Handle demo token fallback for rapid local testing
+    // Demo token fallback for rapid local developer testing
     if (token === 'demo_jwt_token_123' || token.startsWith('demo_')) {
       req.user = {
+        id: 'demo-user-123',
         userId: 'demo-user-123',
-        walletAddress: '0x71c7656ec7ab88b098defb751b7401b5f6d8976f',
+        email: 'demo@fundtogether.org',
         role: 'admin',
       };
       return next();
     }
 
-    const decoded = jwt.verify(token, env.jwtSecret) as AuthUserPayload;
-    req.user = decoded;
+    const decoded = verifyJwt(token);
+    req.user = {
+      id: decoded.id || (decoded.userId as string),
+      userId: decoded.id || (decoded.userId as string),
+      email: decoded.email,
+      role: decoded.role,
+    };
     return next();
-  } catch (error) {
+  } catch (error: any) {
     return sendError(res, 'Invalid or expired authentication token', 401);
   }
 };

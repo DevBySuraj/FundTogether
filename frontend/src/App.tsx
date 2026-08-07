@@ -1,22 +1,38 @@
 import React, { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './context/ThemeContext';
-import { Web3Provider } from './context/Web3Context';
+import { Web3Provider, useWeb3 } from './context/Web3Context';
+
+// Main Public App Components
 import { Navbar } from './components/layout/Navbar';
 import { Hero } from './components/hero/Hero';
 import { CampaignGrid } from './components/campaign/CampaignGrid';
+import { GuestLandingView } from './components/landing/GuestLandingView';
 import { CreateCampaignModal } from './components/campaign/CreateCampaignModal';
 import { TrustReportModal } from './components/verification/TrustReportModal';
-import { AdminPanelModal } from './components/admin/AdminPanelModal';
 import { DonateModal } from './components/donate/DonateModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { Footer } from './components/layout/Footer';
 import type { Campaign } from './types';
 
-export const AppContent: React.FC = () => {
+// Admin Dedicated Frontend App Components
+import { AdminAuthProvider } from './admin/context/AdminAuthContext';
+import { ProtectedRoute } from './admin/components/ProtectedRoute';
+import { AdminLayout } from './admin/components/AdminLayout';
+import { AdminLoginPage } from './admin/pages/AdminLoginPage';
+import { AdminDashboardPage } from './admin/pages/AdminDashboardPage';
+import { AdminPendingPage } from './admin/pages/AdminPendingPage';
+import { AdminCampaignDetailPage } from './admin/pages/AdminCampaignDetailPage';
+import { AdminHistoryPage } from './admin/pages/AdminHistoryPage';
+import { AdminReportsPage } from './admin/pages/AdminReportsPage';
+import { AdminNotificationsPage } from './admin/pages/AdminNotificationsPage';
+import { AdminProfilePage } from './admin/pages/AdminProfilePage';
+
+export const PublicPlatform: React.FC = () => {
+  const { user } = useWeb3();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [activeTrustReportId, setActiveTrustReportId] = useState<string | null>(null);
   const [donatingCampaign, setDonatingCampaign] = useState<Campaign | null>(null);
@@ -26,31 +42,49 @@ export const AppContent: React.FC = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
+  const handleCreateModalOpen = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+    } else {
+      setIsCreateModalOpen(true);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
-        onOpenCreateModal={() => setIsCreateModalOpen(true)}
-        onOpenAdminModal={() => setIsAdminModalOpen(true)}
+        onOpenCreateModal={handleCreateModalOpen}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
       <main style={{ flex: 1 }}>
         <Hero
-          onOpenCreateModal={() => setIsCreateModalOpen(true)}
+          onOpenCreateModal={handleCreateModalOpen}
           onExploreClick={() => {
-            const el = document.getElementById('campaignsSection');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
+            if (!user) {
+              setIsAuthModalOpen(true);
+            } else {
+              const el = document.getElementById('campaignsSection');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }
           }}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
         />
 
-        <CampaignGrid
-          selectedCategory={selectedCategory}
-          onViewTrustReport={(id) => setActiveTrustReportId(id)}
-          onDonateClick={(campaign) => setDonatingCampaign(campaign)}
-          refreshTrigger={refreshTrigger}
-        />
+        {/* If user is logged in, show role-based CampaignGrid (Recipient or Donor). If NOT logged in, show GuestLandingView. */}
+        {user ? (
+          <CampaignGrid
+            selectedCategory={selectedCategory}
+            onViewTrustReport={(id) => setActiveTrustReportId(id)}
+            onDonateClick={(campaign) => setDonatingCampaign(campaign)}
+            onOpenCreateModal={handleCreateModalOpen}
+            refreshTrigger={refreshTrigger}
+          />
+        ) : (
+          <GuestLandingView onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+        )}
       </main>
 
       <Footer />
@@ -67,12 +101,6 @@ export const AppContent: React.FC = () => {
         onClose={() => setActiveTrustReportId(null)}
       />
 
-      <AdminPanelModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-        onRefreshCampaigns={handleRefresh}
-      />
-
       <DonateModal
         campaign={donatingCampaign}
         onClose={() => setDonatingCampaign(null)}
@@ -82,7 +110,6 @@ export const AppContent: React.FC = () => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onOpenAdminModal={() => setIsAdminModalOpen(true)}
       />
     </div>
   );
@@ -97,7 +124,34 @@ export const App: React.FC = () => {
     <GoogleOAuthProvider clientId={googleClientId}>
       <ThemeProvider>
         <Web3Provider>
-          <AppContent />
+          <AdminAuthProvider>
+            <BrowserRouter>
+              <Routes>
+                {/* Public Platform Routes (Recipient & Donor) */}
+                <Route path="/" element={<PublicPlatform />} />
+
+                {/* Admin Dedicated Entry Point */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+
+                {/* Admin Guarded Protected Dashboard Routes */}
+                <Route path="/admin" element={<ProtectedRoute />}>
+                  <Route element={<AdminLayout />}>
+                    <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboardPage />} />
+                    <Route path="pending" element={<AdminPendingPage />} />
+                    <Route path="campaign/:id" element={<AdminCampaignDetailPage />} />
+                    <Route path="history" element={<AdminHistoryPage />} />
+                    <Route path="reports" element={<AdminReportsPage />} />
+                    <Route path="notifications" element={<AdminNotificationsPage />} />
+                    <Route path="profile" element={<AdminProfilePage />} />
+                  </Route>
+                </Route>
+
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </AdminAuthProvider>
         </Web3Provider>
       </ThemeProvider>
     </GoogleOAuthProvider>

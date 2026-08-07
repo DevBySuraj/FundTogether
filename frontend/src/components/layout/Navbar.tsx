@@ -4,7 +4,6 @@ import { useTheme } from '../../context/ThemeContext';
 
 interface NavbarProps {
   onOpenCreateModal: () => void;
-  onOpenAdminModal: () => void;
   onOpenAuthModal: () => void;
   selectedCategory: string;
   onSelectCategory: (cat: string) => void;
@@ -12,7 +11,6 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenCreateModal,
-  onOpenAdminModal,
   onOpenAuthModal,
   selectedCategory,
   onSelectCategory,
@@ -21,23 +19,25 @@ export const Navbar: React.FC<NavbarProps> = ({
   const { theme, toggleTheme } = useTheme();
 
   const categories = ['All', 'Medical', 'Education', 'Emergency', 'General'];
-  const userRole = user?.role || 'donor';
+  const isRecipient = user?.role === 'recipient' || user?.role === 'user';
+  const isDonor = user?.role === 'donor';
 
   const getRoleBadge = () => {
-    switch (userRole) {
-      case 'user':
-        return <span className="brutal-badge badge-lime"><i className="bi bi-person-workspace me-1"></i>Recipient</span>;
-      case 'admin':
-        return <span className="brutal-badge badge-yellow"><i className="bi bi-shield-check text-primary me-1"></i>Admin</span>;
-      default:
-        return <span className="brutal-badge badge-cyan"><i className="bi bi-heart-fill text-danger me-1"></i>Donor</span>;
+    if (isRecipient) {
+      return <span className="brutal-badge badge-lime"><i className="bi bi-person-workspace me-1"></i>Recipient</span>;
     }
+    return <span className="brutal-badge badge-cyan"><i className="bi bi-heart-fill text-danger me-1"></i>Donor</span>;
   };
 
   const getUserDisplayName = () => {
     if (user?.email) return user.email.split('@')[0];
     if (account) return `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
-    return null;
+    return 'User';
+  };
+
+  const scrollToCampaigns = () => {
+    const el = document.getElementById('campaignsSection');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {theme === 'dark' ? <i className="bi bi-sun-fill text-warning"></i> : <i className="bi bi-moon-stars-fill"></i>}
           </button>
 
-          {user && account ? (
+          {user ? (
             <button className="btn brutal-btn brutal-btn-magenta btn-sm" onClick={disconnectWallet} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
               <i className="bi bi-box-arrow-right"></i> Out
             </button>
@@ -109,24 +109,32 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* RIGHT: Action Buttons */}
           <div className="d-flex align-items-center gap-2 ms-auto mt-3 mt-lg-0 flex-wrap">
-            {/* Start Campaign */}
-            <button className="btn brutal-btn brutal-btn-lime" onClick={onOpenCreateModal}>
-              <i className="bi bi-plus-circle-fill"></i>
-              <span className="d-none d-sm-inline">Start Campaign</span>
-              <span className="d-sm-none">New</span>
-            </button>
+            {/* Recipient Action: Start Campaign */}
+            {isRecipient && (
+              <button className="btn brutal-btn brutal-btn-lime" onClick={onOpenCreateModal}>
+                <i className="bi bi-plus-circle-fill"></i>
+                <span className="d-none d-sm-inline">Start Campaign</span>
+                <span className="d-sm-none">New</span>
+              </button>
+            )}
 
-            {/* Admin Audit */}
-            <button
-              className={`btn brutal-btn ${userRole === 'admin' ? 'brutal-btn-yellow' : ''}`}
-              onClick={onOpenAdminModal}
-              title="Admin Verification Audit"
-            >
-              <i className="bi bi-shield-check text-primary"></i>
-              <span className="d-none d-md-inline">Admin Audit</span>
-            </button>
+            {/* Donor Action: Browse Verified Campaigns */}
+            {isDonor && (
+              <button className="btn brutal-btn brutal-btn-cyan" onClick={scrollToCampaigns}>
+                <i className="bi bi-heart-fill text-danger me-1"></i>
+                <span>Explore Campaigns</span>
+              </button>
+            )}
 
-            {/* Theme Toggle — Desktop only (mobile handled above) */}
+            {/* Unauthenticated Visitor Actions */}
+            {!user && (
+              <button className="btn brutal-btn brutal-btn-lime" onClick={onOpenCreateModal}>
+                <i className="bi bi-plus-circle-fill"></i>
+                <span>Start Campaign</span>
+              </button>
+            )}
+
+            {/* Theme Toggle — Desktop only */}
             <button
               className="btn brutal-btn theme-toggle d-none d-lg-inline-flex"
               onClick={toggleTheme}
@@ -135,13 +143,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               {theme === 'dark' ? <i className="bi bi-sun-fill text-warning"></i> : <i className="bi bi-moon-stars-fill"></i>}
             </button>
 
-            {/* User Session — Desktop only (mobile handled above) */}
-            {user && account ? (
+            {/* User Session — Desktop only */}
+            {user ? (
               <div className="d-none d-lg-flex align-items-center gap-2 border border-2 border-dark p-1 bg-white">
                 <button
                   onClick={onOpenAuthModal}
                   className="btn border-0 bg-transparent p-0 d-flex align-items-center gap-2"
-                  title="Switch Role"
+                  title="View Account Status"
                 >
                   {getRoleBadge()}
                   <span className="fw-bold small text-dark">{getUserDisplayName()}</span>
@@ -160,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Mobile: Show role info when logged in inside collapse */}
-            {user && account && (
+            {user && (
               <div className="d-flex d-lg-none align-items-center gap-2 w-100 mt-2 border border-2 border-dark p-2 bg-white">
                 {getRoleBadge()}
                 <span className="fw-bold small text-dark flex-fill">{getUserDisplayName()}</span>

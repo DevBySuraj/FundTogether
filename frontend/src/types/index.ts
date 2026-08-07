@@ -1,4 +1,4 @@
-export type CampaignStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'ACTIVE' | 'REJECTED' | 'COMPLETED';
+export type CampaignStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'APPROVED' | 'ACTIVE' | 'REJECTED' | 'COMPLETED';
 export type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REUPLOAD_REQUESTED';
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical';
 
@@ -73,6 +73,8 @@ export interface User {
   _id?: string;
   email?: string;
   name?: string;
-  walletAddress: string;
-  role: 'user' | 'donor' | 'admin';
+  profilePicture?: string;
+  walletAddress?: string;
+  walletVerified?: boolean;
+  role: 'recipient' | 'user' | 'donor' | 'admin';
 }

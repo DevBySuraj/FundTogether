@@ -10,7 +10,6 @@ interface Web3ContextType {
   error: string | null;
   connectWallet: () => Promise<void>;
   connectWalletWithRole: (role: 'user' | 'donor' | 'admin') => Promise<void>;
-  setRole: (role: 'user' | 'donor' | 'admin') => void;
   setUserSession: (user: User, token: string) => void;
   disconnectWallet: () => void;
 }
@@ -30,7 +29,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsed = JSON.parse(savedUser);
         setUser(parsed);
-        setAccount(parsed.walletAddress || '0x71c7656ec7ab88b098defb751B7401b5f6d8976f');
+        setAccount(parsed.walletAddress || null);
       } catch (err) {
         localStorage.removeItem('trustchain_user');
         localStorage.removeItem('trustchain_token');
@@ -43,24 +42,16 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const setRole = (role: 'user' | 'donor' | 'admin') => {
-    if (user) {
-      const updated = { ...user, role };
-      setUser(updated);
-      localStorage.setItem('trustchain_user', JSON.stringify(updated));
-    }
-  };
-
   const setUserSession = (loggedUser: User, token: string) => {
+    // Strictly preserve role stored in DB from backend JWT/User payload
     setUser(loggedUser);
-    setAccount(loggedUser.walletAddress || '0x71c7656ec7ab88b098defb751B7401b5f6d8976f');
+    setAccount(loggedUser.walletAddress || null);
     localStorage.setItem('trustchain_user', JSON.stringify(loggedUser));
     localStorage.setItem('trustchain_token', token);
   };
 
   const connectWalletWithRole = async (role: 'user' | 'donor' | 'admin') => {
     await connectWallet();
-    setRole(role);
   };
 
   const connectWallet = async () => {
@@ -69,17 +60,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       if (!(window as any).ethereum) {
-        const demoAccount = '0x71c7656ec7ab88b098defb751B7401b5f6d8976f';
-        setAccount(demoAccount);
-        const demoUser: User = {
-          id: 'demo-user-123',
-          walletAddress: demoAccount,
-          role: user?.role || 'donor',
-        };
-        setUser(demoUser);
-        localStorage.setItem('trustchain_user', JSON.stringify(demoUser));
-        localStorage.setItem('trustchain_token', 'demo_jwt_token_123');
-        return;
+        throw new Error('MetaMask is not installed in your browser. Please install MetaMask to connect your wallet.');
       }
 
       const provider = new ethers.BrowserProvider((window as any).ethereum);
@@ -100,25 +81,12 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const verifyRes = await authAPI.verifySignature(selectedAccount, signature);
 
-      const token = verifyRes.data.token;
-      const userData: User = { ...verifyRes.data.user, role: user?.role || 'donor' };
-
-      localStorage.setItem('trustchain_token', token);
-      localStorage.setItem('trustchain_user', JSON.stringify(userData));
-
-      setUser(userData);
+      if (verifyRes.data && verifyRes.data.token) {
+        setUserSession(verifyRes.data.user, verifyRes.data.token);
+      }
     } catch (err: any) {
-      console.error('Wallet connection error, using demo wallet fallback:', err);
-      const demoAccount = '0x71c7656ec7ab88b098defb751B7401b5f6d8976f';
-      setAccount(demoAccount);
-      const demoUser: User = {
-        id: 'demo-user-123',
-        walletAddress: demoAccount,
-        role: user?.role || 'donor',
-      };
-      setUser(demoUser);
-      localStorage.setItem('trustchain_user', JSON.stringify(demoUser));
-      localStorage.setItem('trustchain_token', 'demo_jwt_token_123');
+      console.error('Wallet connect error:', err);
+      setError(err.message || 'Failed to connect Metamask wallet');
     } finally {
       setIsConnecting(false);
     }
@@ -127,8 +95,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const disconnectWallet = () => {
     setAccount(null);
     setUser(null);
-    localStorage.removeItem('trustchain_token');
     localStorage.removeItem('trustchain_user');
+    localStorage.removeItem('trustchain_token');
   };
 
   return (
@@ -140,7 +108,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         connectWallet,
         connectWalletWithRole,
-        setRole,
         setUserSession,
         disconnectWallet,
       }}

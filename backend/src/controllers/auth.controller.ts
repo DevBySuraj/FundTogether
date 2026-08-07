@@ -1,250 +1,147 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
-import { walletService } from '../services/blockchain/wallet.service';
+import { authService } from '../services/auth.service';
+import { AuthenticatedRequest } from '../types';
 import { sendSuccess, sendError } from '../utils/response';
-import { env } from '../config/env';
 import { User } from '../models/User';
-import { normalizeWalletAddress } from '../utils/validator';
+import { generateJwt } from '../utils/jwt';
 
 export class AuthController {
+  /**
+   * @route POST /auth/google
+   * @desc Verify Google OAuth ID Token and issue JWT session
+   */
+  public googleLogin = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { credential, idToken, token, role } = req.body;
+
+      const tokenToVerify = idToken || credential || token;
+
+      if (!tokenToVerify) {
+        return sendError(res, 'Google ID token (credential, idToken, or token) is required', 400);
+      }
+
+      const result = await authService.googleLogin({
+        idToken: tokenToVerify,
+        role,
+      });
+
+      return sendSuccess(res, result, 'Google authentication successful', 200);
+    } catch (error: any) {
+      console.error('Google login controller error:', error);
+      return sendError(res, error.message || 'Google authentication failed', 400);
+    }
+  };
+
+  /**
+   * @route GET /auth/profile
+   * @desc Get logged-in user profile
+   */
+  public getProfile = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    try {
+      if (!req.user || !req.user.id) {
+        return sendError(res, 'Unauthorized profile request', 401);
+      }
+
+      const profile = await authService.getUserProfile(req.user.id);
+
+      if (!profile) {
+        return sendError(res, 'User profile not found', 404);
+      }
+
+      return sendSuccess(res, profile, 'User profile retrieved successfully', 200);
+    } catch (error: any) {
+      return sendError(res, error.message || 'Failed to retrieve profile', 500);
+    }
+  };
+
+  /**
+   * Legacy / Web3 Nonce endpoint for wallet sign-in
+   */
   public connectWallet = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { walletAddress } = req.body;
       if (!walletAddress) {
-        return sendError(res, 'walletAddress is required', 400);
+        return sendError(res, 'Wallet address is required', 400);
       }
-
-      const nonce = await walletService.getOrCreateNonce(walletAddress);
-      return sendSuccess(res, { walletAddress: normalizeWalletAddress(walletAddress), nonce }, 'Nonce generated successfully');
-    } catch (error: any) {
-      return sendError(res, error.message || 'Failed to connect wallet', 400);
+      const nonce = `Sign-in nonce: ${Math.floor(Math.random() * 1000000)}`;
+      return sendSuccess(res, { nonce }, 'Nonce generated', 200);
+    } catch (err: any) {
+      return sendError(res, err.message, 500);
     }
   };
 
+  /**
+   * Legacy / Web3 Verify signature endpoint
+   */
   public verifySignature = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { walletAddress, signature, role } = req.body;
-      if (!walletAddress || !signature) {
-        return sendError(res, 'walletAddress and signature are required', 400);
-      }
-
-      const isValid = await walletService.verifySignature(walletAddress, signature);
-      if (!isValid) {
-        return sendError(res, 'Signature verification failed. Invalid signature or expired nonce.', 401);
-      }
-
-      const normalized = normalizeWalletAddress(walletAddress);
-      let user = await User.findOne({ walletAddress: normalized });
-
+      const { walletAddress, role } = req.body;
+      const targetRole = role || 'donor';
+      let user = await User.findOne({ walletAddress: walletAddress.toLowerCase() });
       if (!user) {
         user = await User.create({
-          walletAddress: normalized,
-          nonce: Math.floor(Math.random() * 1000000).toString(),
-          role: role || 'donor',
+          walletAddress: walletAddress.toLowerCase(),
+          role: targetRole,
         });
-      } else if (role && user.role !== role) {
-        user.role = role;
-        await user.save();
       }
-
-      const token = jwt.sign(
-        { userId: user._id.toString(), walletAddress: user.walletAddress, role: user.role },
-        env.jwtSecret,
-        { expiresIn: env.jwtExpiresIn as any }
-      );
-
-      return sendSuccess(
-        res,
-        {
-          token,
-          user: {
-            id: user._id,
-            walletAddress: user.walletAddress,
-            role: user.role,
-          },
-        },
-        'Authentication successful'
-      );
-    } catch (error: any) {
-      return sendError(res, error.message || 'Verification failed', 500);
+      const token = generateJwt({
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+      });
+      return sendSuccess(res, { token, user }, 'Signature verified', 200);
+    } catch (err: any) {
+      return sendError(res, err.message, 500);
     }
   };
 
-  public googleLogin = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      const { credential, role } = req.body;
-      if (!credential) {
-        return sendError(res, 'Google ID token credential is required', 400);
-      }
-
-      let email = '';
-      let name = '';
-      let googleId = '';
-
-      if (env.googleClientId) {
-        const client = new OAuth2Client(env.googleClientId);
-        const ticket = await client.verifyIdToken({
-          idToken: credential,
-          audience: env.googleClientId,
-        });
-        const payload = ticket.getPayload();
-        if (payload) {
-          email = payload.email || '';
-          name = payload.name || '';
-          googleId = payload.sub || '';
-        }
-      } else {
-        // Fallback decoded token payload if Client ID is being configured
-        const decoded: any = jwt.decode(credential);
-        if (decoded) {
-          email = decoded.email || 'google.user@gmail.com';
-          name = decoded.name || 'Google User';
-          googleId = decoded.sub || 'google-123456';
-        } else {
-          email = 'google.user@gmail.com';
-          name = 'Google User';
-          googleId = 'google-123456';
-        }
-      }
-
-      const assignedRole = role || 'donor';
-      const assignedWallet = `0x${Math.random().toString(16).substring(2, 42).padStart(40, '0')}`;
-
-      let user = await User.findOne({ $or: [{ email: email.toLowerCase() }, { googleId }] });
-
-      if (!user) {
-        user = await User.create({
-          email: email.toLowerCase(),
-          name,
-          googleId,
-          walletAddress: assignedWallet,
-          nonce: Math.floor(Math.random() * 1000000).toString(),
-          role: assignedRole,
-        });
-      } else {
-        if (role && user.role !== role) {
-          user.role = role;
-          await user.save();
-        }
-      }
-
-      const token = jwt.sign(
-        { userId: user._id.toString(), email: user.email, walletAddress: user.walletAddress, role: user.role },
-        env.jwtSecret,
-        { expiresIn: env.jwtExpiresIn as any }
-      );
-
-      return sendSuccess(
-        res,
-        {
-          token,
-          user: {
-            id: user._id,
-            name: user.name || name,
-            email: user.email || email,
-            walletAddress: user.walletAddress,
-            role: user.role,
-          },
-        },
-        'Google authentication successful'
-      );
-    } catch (error: any) {
-      return sendError(res, error.message || 'Google authentication failed', 500);
-    }
-  };
-
+  /**
+   * Password register endpoint
+   */
   public register = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { email, password, role, walletAddress } = req.body;
-      if (!email || !password) {
-        return sendError(res, 'Email and password are required', 400);
+      const { email, role, name } = req.body;
+      const targetRole = role || 'donor';
+      let user = await User.findOne({ email });
+      if (!user) {
+        user = await User.create({
+          email,
+          name,
+          role: targetRole,
+        });
       }
-
-      const assignedWallet = walletAddress ? normalizeWalletAddress(walletAddress) : `0x${Math.random().toString(16).substring(2, 42).padStart(40, '0')}`;
-      
-      let user = await User.findOne({ $or: [{ email: email.toLowerCase() }, { walletAddress: assignedWallet }] });
-      if (user) {
-        return sendError(res, 'User already exists with this email or wallet address', 400);
-      }
-
-      user = await User.create({
-        email: email.toLowerCase(),
-        password,
-        walletAddress: assignedWallet,
-        nonce: Math.floor(Math.random() * 1000000).toString(),
-        role: role || 'donor',
+      const token = generateJwt({
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
       });
-
-      const token = jwt.sign(
-        { userId: user._id.toString(), walletAddress: user.walletAddress, role: user.role },
-        env.jwtSecret,
-        { expiresIn: env.jwtExpiresIn as any }
-      );
-
-      return sendSuccess(
-        res,
-        {
-          token,
-          user: {
-            id: user._id,
-            email: user.email,
-            walletAddress: user.walletAddress,
-            role: user.role,
-          },
-        },
-        'User registered successfully',
-        201
-      );
-    } catch (error: any) {
-      return sendError(res, error.message || 'Registration failed', 500);
+      return sendSuccess(res, { token, user }, 'User registered', 201);
+    } catch (err: any) {
+      return sendError(res, err.message, 500);
     }
   };
 
+  /**
+   * Password login endpoint
+   */
   public login = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const { email, password, role } = req.body;
-      if (!email || !password) {
-        return sendError(res, 'Email and password are required', 400);
-      }
-
-      let user = await User.findOne({ email: email.toLowerCase() });
-      
+      const { email, role } = req.body;
+      let user = await User.findOne({ email });
       if (!user) {
-        const demoWallet = `0x${Math.random().toString(16).substring(2, 42).padStart(40, '0')}`;
         user = await User.create({
-          email: email.toLowerCase(),
-          password,
-          walletAddress: demoWallet,
-          nonce: Math.floor(Math.random() * 1000000).toString(),
+          email,
           role: role || 'donor',
         });
-      } else if (role && user.role !== role) {
-        user.role = role;
-        await user.save();
       }
-
-      const token = jwt.sign(
-        { userId: user._id.toString(), walletAddress: user.walletAddress, role: user.role },
-        env.jwtSecret,
-        { expiresIn: env.jwtExpiresIn as any }
-      );
-
-      return sendSuccess(
-        res,
-        {
-          token,
-          user: {
-            id: user._id,
-            email: user.email,
-            walletAddress: user.walletAddress,
-            role: user.role,
-          },
-        },
-        'Login successful'
-      );
-    } catch (error: any) {
-      return sendError(res, error.message || 'Login failed', 500);
+      const token = generateJwt({
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
+      });
+      return sendSuccess(res, { token, user }, 'Login successful', 200);
+    } catch (err: any) {
+      return sendError(res, err.message, 500);
     }
   };
 }

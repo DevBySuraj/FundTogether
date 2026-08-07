@@ -1,10 +1,13 @@
 import axios from 'axios';
-import { Campaign, TrustReport, VerificationRecord } from '../types';
+import type { Campaign, TrustReport, VerificationRecord } from '../types';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000';
+const API_BASE_URL = 'http://localhost:5000/api';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 api.interceptors.request.use((config) => {
@@ -16,44 +19,37 @@ api.interceptors.request.use((config) => {
 });
 
 export const authAPI = {
+  googleLogin: async (credentialToken: string, role: 'recipient' | 'donor') => {
+    const res = await api.post('/auth/google', { token: credentialToken, role });
+    return res.data;
+  },
   connectWallet: async (walletAddress: string) => {
     const res = await api.post('/auth/connect-wallet', { walletAddress });
     return res.data;
   },
-  verifySignature: async (walletAddress: string, signature: string, role?: string) => {
-    const res = await api.post('/auth/verify-signature', { walletAddress, signature, role });
+  verifySignature: async (walletAddress: string, signature: string) => {
+    const res = await api.post('/auth/verify-signature', { walletAddress, signature });
     return res.data;
   },
-  login: async (email: string, password: string, role?: string) => {
-    const res = await api.post('/auth/login', { email, password, role });
-    return res.data;
-  },
-  register: async (email: string, password: string, role?: string) => {
-    const res = await api.post('/auth/register', { email, password, role });
-    return res.data;
-  },
-  googleLogin: async (credential: string, role?: string) => {
-    const res = await api.post('/auth/google', { credential, role });
+  getProfile: async () => {
+    const res = await api.get('/auth/profile');
     return res.data;
   },
 };
 
 export const campaignAPI = {
-  create: async (data: {
-    title: string;
-    description: string;
-    targetAmount: number;
-    category: string;
-    recipientWallet: string;
-  }) => {
-    const res = await api.post('/campaign/create', data);
+  getAll: async (category?: string) => {
+    const params = category && category !== 'All' ? { category } : {};
+    const res = await api.get<{ data: Campaign[] }>('/campaign/all', { params });
     return res.data;
   },
-  getAll: async (category?: string, status?: string) => {
-    const params: any = {};
-    if (category && category !== 'All') params.category = category;
-    if (status) params.status = status;
-    const res = await api.get<{ data: Campaign[] }>('/campaign/all', { params });
+  getVerified: async (category?: string) => {
+    const params = category && category !== 'All' ? { category } : {};
+    const res = await api.get<{ data: Campaign[] }>('/campaign/verified', { params });
+    return res.data;
+  },
+  getMy: async () => {
+    const res = await api.get<{ data: Campaign[] }>('/campaign/my');
     return res.data;
   },
   getById: async (id: string) => {
@@ -62,6 +58,10 @@ export const campaignAPI = {
   },
   getTrustReport: async (id: string) => {
     const res = await api.get<{ data: TrustReport }>(`/campaign/${id}/trust-report`);
+    return res.data;
+  },
+  create: async (data: Partial<Campaign>) => {
+    const res = await api.post<{ data: Campaign }>('/campaign/create', data);
     return res.data;
   },
 };
@@ -73,35 +73,57 @@ export const verificationAPI = {
     if (campaignId) {
       formData.append('campaignId', campaignId);
     }
-
-    const res = await api.post('/verification/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    const res = await api.post('/verification/upload-doc', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data;
   },
-  getStatus: async (id: string) => {
-    const res = await api.get<{ data: VerificationRecord }>(`/verification/status/${id}`);
+};
+
+export const walletAPI = {
+  getNonce: async () => {
+    const res = await api.get<{ data: { message: string; nonce: string; expiresAt: string } }>('/wallet/nonce');
+    return res.data;
+  },
+  verifySignature: async (walletAddress: string, signature: string, campaignId?: string) => {
+    const res = await api.post('/wallet/verify', { walletAddress, signature, campaignId });
+    return res.data;
+  },
+  getStatus: async () => {
+    const res = await api.get<{ data: { walletConnected: boolean; walletVerified: boolean; walletAddress: string } }>('/wallet/status');
     return res.data;
   },
 };
 
 export const adminAPI = {
-  getPending: async (status?: string) => {
-    const params: any = {};
-    if (status) params.status = status;
+  login: async (email: string, password: string) => {
+    const res = await api.post('/admin/login', { email, password });
+    return res.data;
+  },
+  getPendingVerifications: async (status?: string) => {
+    const params = status ? { status } : {};
     const res = await api.get<{ data: VerificationRecord[] }>('/admin/pending', { params });
+    return res.data;
+  },
+  getPending: async (status?: string) => {
+    const params = status ? { status } : {};
+    const res = await api.get<{ data: VerificationRecord[] }>('/admin/pending', { params });
+    return res.data;
+  },
+  approveVerification: async (verificationId: string, campaignId?: string, notes?: string) => {
+    const res = await api.post('/admin/approve', { verificationId, campaignId, notes });
     return res.data;
   },
   approve: async (verificationId: string, campaignId?: string, notes?: string) => {
     const res = await api.post('/admin/approve', { verificationId, campaignId, notes });
     return res.data;
   },
-  reject: async (verificationId: string, reason?: string, requestReupload?: boolean) => {
-    const res = await api.post('/admin/reject', { verificationId, reason, requestReupload });
+  rejectVerification: async (verificationId: string, campaignId?: string, reason?: string) => {
+    const res = await api.post('/admin/reject', { verificationId, campaignId, reason });
+    return res.data;
+  },
+  reject: async (verificationId: string, campaignId?: string, reason?: string) => {
+    const res = await api.post('/admin/reject', { verificationId, campaignId, reason });
     return res.data;
   },
 };
-
-export default api;

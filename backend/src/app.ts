@@ -28,7 +28,8 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-// Primary API Router
+// Primary API Router (Mount on both '/' and '/api' for complete compatibility)
+app.use('/api', routes);
 app.use('/', routes);
 
 // Global Error Handling Middleware

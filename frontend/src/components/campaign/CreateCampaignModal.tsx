@@ -15,15 +15,12 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const { account, connectWallet } = useWeb3();
-
-  const defaultWallet = account || 'user@upi';
+  const { account, user } = useWeb3();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [category, setCategory] = useState('Medical');
-  const [recipientWallet, setRecipientWallet] = useState(defaultWallet);
   const [file, setFile] = useState<File | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,14 +32,13 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
     if (isOpen) {
       resetForm();
     }
-  }, [isOpen, account]);
+  }, [isOpen, account, user]);
 
   const resetForm = () => {
     setTitle('');
     setDescription('');
     setTargetAmount('');
     setCategory('Medical');
-    setRecipientWallet(account || 'user@upi');
     setFile(null);
     setAiResult(null);
     setErrorMessage(null);
@@ -78,11 +74,7 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      if (!account) {
-        await connectWallet();
-      }
-
-      const activeWallet = account || recipientWallet || 'user@upi';
+      const activeWallet = account || user?.walletAddress || 'pending_verification';
 
       // 1. Create Campaign draft
       const campaignRes = await campaignAPI.create({
@@ -140,11 +132,16 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
 
                 <AiReportCard result={aiResult} />
 
+                <div className="alert alert-info fw-bold small mt-3">
+                  <i className="bi bi-info-circle-fill me-2"></i>
+                  Next Step: After Admin approval, you will connect &amp; verify your MetaMask wallet to activate the campaign for donations.
+                </div>
+
                 <button
                   onClick={handleCloseAndReset}
-                  className="btn brutal-btn brutal-btn-lime w-100 mt-4 py-3 fw-bold fs-6 text-uppercase"
+                  className="btn brutal-btn brutal-btn-lime w-100 mt-3 py-3 fw-bold fs-6 text-uppercase"
                 >
-                  <i className="bi bi-check-lg me-1"></i> Done & View Campaign Gallery
+                  <i className="bi bi-check-lg me-1"></i> Done &amp; View Campaign Gallery
                 </button>
               </div>
             ) : (
@@ -212,24 +209,6 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
                       <option value="Emergency">Emergency</option>
                       <option value="General">General</option>
                     </select>
-                  </div>
-                </div>
-
-                {/* Recipient UPI / Bank Wallet Address */}
-                <div className="mb-3">
-                  <label className="form-label fw-bold">
-                    Recipient UPI ID / Wallet Address <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control font-monospace"
-                    required
-                    placeholder="e.g. name@upi or 0x..."
-                    value={recipientWallet}
-                    onChange={(e) => setRecipientWallet(e.target.value)}
-                  />
-                  <div className="form-text small fw-bold text-success">
-                    <i className="bi bi-shield-check me-1"></i> Direct recipient destination for verified campaign donations.
                   </div>
                 </div>
 

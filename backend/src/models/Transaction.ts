@@ -8,6 +8,16 @@ const TransactionSchema = new Schema<ITransaction>(
       ref: 'Campaign',
       required: true,
     },
+    donorId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    recipientId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
     donorWallet: {
       type: String,
       required: true,

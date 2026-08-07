@@ -6,17 +6,20 @@ interface CampaignCardProps {
   campaign: Campaign;
   onViewTrustReport: (campaignId: string) => void;
   onDonateClick: (campaign: Campaign) => void;
+  onVerifyWalletClick?: (campaignId: string) => void;
 }
 
 export const CampaignCard: React.FC<CampaignCardProps> = ({
   campaign,
   onViewTrustReport,
   onDonateClick,
+  onVerifyWalletClick,
 }) => {
   const { user } = useWeb3();
   const percent = Math.min(100, Math.round((campaign.currentAmount / campaign.targetAmount) * 100));
 
-  const isRecipientMode = user?.role === 'user';
+  const isRecipientMode = user?.role === 'recipient' || user?.role === 'user';
+  const isWalletUnverified = !user?.walletVerified || campaign.recipientWallet === 'pending_wallet_verification';
 
   const formatInr = (amount: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
@@ -25,13 +28,15 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
   const getStatusBadge = () => {
     switch (campaign.status) {
       case 'ACTIVE':
-        return <span className="brutal-badge badge-lime"><i className="bi bi-patch-check-fill"></i> ACTIVE & VERIFIED</span>;
+        return <span className="brutal-badge badge-lime"><i className="bi bi-patch-check-fill"></i> ACTIVE &amp; VERIFIED</span>;
+      case 'APPROVED':
+        return <span className="brutal-badge badge-cyan"><i className="bi bi-check-circle-fill"></i> APPROVED BY ADMIN</span>;
       case 'PENDING_VERIFICATION':
-        return <span className="brutal-badge badge-cyan">AI REVIEW PENDING</span>;
+        return <span className="brutal-badge badge-yellow"><i className="bi bi-hourglass-split"></i> AI REVIEW PENDING</span>;
       case 'COMPLETED':
-        return <span className="brutal-badge badge-lime">COMPLETED</span>;
+        return <span className="brutal-badge badge-lime"><i className="bi bi-check-all"></i> COMPLETED</span>;
       default:
-        return <span className="brutal-badge badge-yellow">DRAFT</span>;
+        return <span className="brutal-badge badge-yellow"><i className="bi bi-clock"></i> DRAFT</span>;
     }
   };
 
@@ -68,6 +73,21 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
           <div className="text-secondary small mb-3">
             Target: <strong>{formatInr(campaign.targetAmount)}</strong>
           </div>
+
+          {/* Recipient Action: Connect MetaMask Wallet to Activate */}
+          {isRecipientMode && isWalletUnverified && (
+            <div className="p-2 border border-2 border-dark bg-light mb-3 text-center">
+              <small className="fw-bold text-dark d-block mb-1">
+                <i className="bi bi-shield-lock-fill text-warning me-1"></i> Wallet Verification Required
+              </small>
+              <button
+                onClick={() => onVerifyWalletClick && onVerifyWalletClick(campaign._id)}
+                className="btn brutal-btn brutal-btn-lime btn-sm w-100 fw-bold"
+              >
+                🦊 Verify MetaMask Wallet
+              </button>
+            </div>
+          )}
 
           {/* Action Buttons based on User Role */}
           <div className="d-grid gap-2">

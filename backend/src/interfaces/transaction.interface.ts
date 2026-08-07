@@ -2,6 +2,8 @@ import { Document as MongooseDocument, Types } from 'mongoose';
 
 export interface ITransaction extends MongooseDocument {
   campaignId: Types.ObjectId;
+  donorId?: Types.ObjectId;
+  recipientId?: Types.ObjectId;
   donorWallet: string;
   recipientWallet: string;
   amountEth: string;

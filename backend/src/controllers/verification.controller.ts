@@ -11,12 +11,14 @@ export class VerificationController {
       }
 
       const { campaignId } = req.body;
-      const uploadedBy = req.user?.walletAddress;
+      const uploadedBy = req.user?.walletAddress || req.user?.email;
+      const userId = req.user?.id || req.user?.userId;
 
       const result = await verificationService.processUploadAndVerify(
         req.file,
         campaignId,
-        uploadedBy
+        uploadedBy,
+        userId
       );
 
       return sendSuccess(
@@ -40,6 +42,7 @@ export class VerificationController {
         201
       );
     } catch (error: any) {
+      console.error('Verification Upload Error:', error);
       return sendError(res, error.message || 'Verification upload failed', 500);
     }
   };

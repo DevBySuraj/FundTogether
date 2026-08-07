@@ -1,6 +1,8 @@
-import { Document as MongooseDocument } from 'mongoose';
+import { Document as MongooseDocument, Types } from 'mongoose';
 
 export interface IDocument extends MongooseDocument {
+  userId?: Types.ObjectId;
+  campaignId?: Types.ObjectId;
   originalName: string;
   filename: string;
   path: string;

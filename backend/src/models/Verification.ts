@@ -6,11 +6,13 @@ const VerificationSchema = new Schema<IVerification>(
     campaignId: {
       type: Schema.Types.ObjectId,
       ref: 'Campaign',
+      index: true,
     },
     documentId: {
       type: Schema.Types.ObjectId,
       ref: 'Document',
       required: true,
+      index: true,
     },
     documentType: {
       type: String,
@@ -27,6 +29,7 @@ const VerificationSchema = new Schema<IVerification>(
       enum: ['Low', 'Medium', 'High', 'Critical'],
       required: true,
       default: 'Low',
+      index: true,
     },
     summary: {
       type: String,
@@ -46,6 +49,7 @@ const VerificationSchema = new Schema<IVerification>(
       type: String,
       enum: ['PENDING', 'APPROVED', 'REJECTED', 'REUPLOAD_REQUESTED'],
       default: 'PENDING',
+      index: true,
     },
     reviewedBy: {
       type: String,
@@ -62,5 +66,8 @@ const VerificationSchema = new Schema<IVerification>(
     timestamps: true,
   }
 );
+
+// Compound index for querying verifications by campaign and status
+VerificationSchema.index({ campaignId: 1, status: 1 });
 
 export const Verification = model<IVerification>('Verification', VerificationSchema);

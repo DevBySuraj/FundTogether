@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import type { Campaign } from '../../types';
 import { campaignAPI } from '../../services/api';
 import { CampaignCard } from './CampaignCard';
+import { WalletVerificationModal } from '../verification/WalletVerificationModal';
 import { useWeb3 } from '../../context/Web3Context';
 
 interface CampaignGridProps {
   selectedCategory: string;
   onViewTrustReport: (campaignId: string) => void;
   onDonateClick: (campaign: Campaign) => void;
+  onOpenCreateModal: () => void;
   refreshTrigger: number;
 }
 
@@ -15,79 +17,110 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
   selectedCategory,
   onViewTrustReport,
   onDonateClick,
+  onOpenCreateModal,
   refreshTrigger,
 }) => {
-  const { account, user, setRole } = useWeb3();
+  const { account, user } = useWeb3();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [verifyingCampaignId, setVerifyingCampaignId] = useState<string | null>(null);
 
-  const isRecipientMode = user?.role === 'user';
+  const isRecipientMode = user?.role === 'recipient' || user?.role === 'user';
+  const isDonorMode = user?.role === 'donor';
 
   useEffect(() => {
     fetchCampaigns();
-  }, [selectedCategory, refreshTrigger]);
+  }, [selectedCategory, refreshTrigger, isRecipientMode, user]);
 
   const fetchCampaigns = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await campaignAPI.getAll(selectedCategory);
-      setCampaigns(response.data || []);
+      if (isRecipientMode) {
+        // Recipient View: Call /campaign/my to retrieve recipient's campaigns (including DRAFT / PENDING_VERIFICATION / APPROVED)
+        const response = await campaignAPI.getMy();
+        let list = response.data || [];
+        if (selectedCategory && selectedCategory !== 'All') {
+          list = list.filter((c) => c.category === selectedCategory);
+        }
+        setCampaigns(list);
+      } else {
+        // Donor View: Call /campaign/verified to retrieve ONLY campaigns manually verified & approved by Admin
+        const response = await campaignAPI.getVerified();
+        let list = response.data || [];
+        if (selectedCategory && selectedCategory !== 'All') {
+          list = list.filter((c) => c.category === selectedCategory);
+        }
+        setCampaigns(list);
+      }
     } catch (err: any) {
       console.error('Failed to fetch campaigns:', err);
-      setError('Unable to load campaigns from TrustChain server.');
+      // Fallback call
+      try {
+        const fallbackRes = await campaignAPI.getAll(selectedCategory);
+        setCampaigns(fallbackRes.data || []);
+      } catch {
+        setError('Unable to load campaigns from TrustChain server.');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Role-based Campaign Filter:
-  // Recipient Mode: Show ONLY campaigns created by recipient's wallet
-  // Donor Mode: Show ALL published campaigns
+  // Filter campaigns strictly by role:
+  // Recipient: Display ALL campaigns returned by /campaign/my (they belong to current recipient)
+  // Donor: Only campaigns manually approved by Admin (ACTIVE or COMPLETED)
   const displayedCampaigns = campaigns.filter((c) => {
-    if (isRecipientMode && account) {
-      return c.recipientWallet.toLowerCase() === account.toLowerCase();
+    if (isRecipientMode) {
+      return true; // All campaigns from /campaign/my belong to recipient
     }
-    return true;
+    // Donors see ONLY active or completed campaigns approved by Admin
+    return c.status === 'ACTIVE' || c.status === 'COMPLETED';
   });
 
   return (
     <section className="container py-5" id="campaignsSection">
       {/* Header & Role Bar */}
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 border-bottom border-2 border-dark pb-3">
         <div>
           <h2 className="fw-black text-uppercase mb-1">
-            {isRecipientMode ? 'My Created Campaigns' : 'All Published Campaigns'}{' '}
+            {isRecipientMode ? (
+              <>
+                <i className="bi bi-person-workspace text-success me-2"></i>
+                Recipient Portal: My Created Fundraisers
+              </>
+            ) : isDonorMode ? (
+              <>
+                <i className="bi bi-heart-fill text-danger me-2"></i>
+                Donor Portal: Verified Campaigns
+              </>
+            ) : (
+              'Verified Medical Campaigns'
+            )}{' '}
             <span className="badge brutal-badge badge-cyan fs-6 ms-2">
               {displayedCampaigns.length}
             </span>
           </h2>
           <small className="text-secondary fw-bold">
             {isRecipientMode
-              ? `Recipient Mode: Showing campaigns created by ${account?.substring(0, 6)}...${account?.substring(account.length - 4)}`
-              : 'Donor Mode: Showing all active verified campaigns available for donations.'}
+              ? user?.email
+                ? `Logged in as Recipient (${user.email})`
+                : account
+                  ? `Recipient Wallet: ${account.substring(0, 6)}...${account.substring(account.length - 4)}`
+                  : 'Recipient Portal: Manage your created fundraisers'
+              : 'Donor Portal: Only campaigns manually verified & approved by Admin are listed.'}
           </small>
         </div>
 
-        {/* Interface Mode Switcher Buttons */}
-        <div className="d-flex gap-2">
-          <button
-            type="button"
-            onClick={() => setRole('user')}
-            className={`btn brutal-btn btn-sm ${isRecipientMode ? 'brutal-btn-lime' : ''}`}
-          >
-            <i className="bi bi-person-workspace me-1"></i> Recipient View (My Campaigns)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setRole('donor')}
-            className={`btn brutal-btn btn-sm ${!isRecipientMode ? 'brutal-btn-cyan' : ''}`}
-          >
-            <i className="bi bi-heart-fill text-danger me-1"></i> Donor View (All Campaigns & Donate)
-          </button>
+        {/* Role-based Header Actions */}
+        <div>
+          {isRecipientMode && (
+            <button onClick={onOpenCreateModal} className="btn brutal-btn brutal-btn-lime fw-bold">
+              <i className="bi bi-plus-circle-fill me-1"></i> Create New Fundraiser
+            </button>
+          )}
         </div>
       </div>
 
@@ -95,7 +128,7 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
       {isLoading ? (
         <div className="text-center py-5">
           <div className="spinner-border text-dark" role="status"></div>
-          <p className="fw-bold mt-2">Loading verified campaigns from TrustChain backend...</p>
+          <p className="fw-bold mt-2">Loading campaigns from TrustChain backend...</p>
         </div>
       ) : error ? (
         <div className="brutal-card max-w-500 mx-auto p-4 text-center">
@@ -106,21 +139,18 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
         </div>
       ) : displayedCampaigns.length === 0 ? (
         <div className="brutal-card max-w-500 mx-auto p-4 text-center">
-          <i className="bi bi-inbox-fill text-secondary fs-1 mb-2"></i>
+          <i className="bi bi-shield-check text-secondary fs-1 mb-2"></i>
           <h4 className="fw-bold mb-2">
-            {isRecipientMode ? 'No Created Campaigns Found' : 'No Campaigns Found'}
+            {isRecipientMode ? 'No Created Campaigns Found' : 'No Verified Campaigns Currently Active'}
           </h4>
           <p className="text-secondary mb-3">
             {isRecipientMode
-              ? 'You have not created any campaigns with your account yet.'
-              : `No campaigns found under category "${selectedCategory}".`}
+              ? 'You have not created any medical fundraisers with your account yet.'
+              : 'Campaigns will appear here once they are manually reviewed, AI-verified, and approved by the Platform Administrator.'}
           </p>
           {isRecipientMode && (
-            <button
-              onClick={() => setRole('donor')}
-              className="btn brutal-btn brutal-btn-cyan"
-            >
-              Switch to Donor View to See All Campaigns
+            <button onClick={onOpenCreateModal} className="btn brutal-btn brutal-btn-lime fw-bold">
+              <i className="bi bi-plus-circle-fill me-1"></i> Start Your First Campaign
             </button>
           )}
         </div>
@@ -132,10 +162,19 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
               campaign={campaign}
               onViewTrustReport={onViewTrustReport}
               onDonateClick={onDonateClick}
+              onVerifyWalletClick={(id) => setVerifyingCampaignId(id)}
             />
           ))}
         </div>
       )}
+
+      {/* Wallet Verification Modal */}
+      <WalletVerificationModal
+        isOpen={!!verifyingCampaignId}
+        campaignId={verifyingCampaignId || undefined}
+        onClose={() => setVerifyingCampaignId(null)}
+        onSuccess={fetchCampaigns}
+      />
     </section>
   );
 };

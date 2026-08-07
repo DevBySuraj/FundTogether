@@ -3,6 +3,11 @@ import { ICampaign } from '../interfaces/campaign.interface';
 
 const CampaignSchema = new Schema<ICampaign>(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
     title: {
       type: String,
       required: true,
@@ -26,21 +31,25 @@ const CampaignSchema = new Schema<ICampaign>(
       type: String,
       required: true,
       default: 'General',
+      index: true,
     },
     recipientWallet: {
       type: String,
       required: true,
       lowercase: true,
       trim: true,
+      index: true,
     },
     status: {
       type: String,
-      enum: ['DRAFT', 'PENDING_VERIFICATION', 'ACTIVE', 'REJECTED', 'COMPLETED'],
+      enum: ['DRAFT', 'PENDING_VERIFICATION', 'APPROVED', 'ACTIVE', 'REJECTED', 'COMPLETED'],
       default: 'DRAFT',
+      index: true,
     },
     verificationId: {
       type: Schema.Types.ObjectId,
       ref: 'Verification',
+      index: true,
     },
     documentHash: {
       type: String,
@@ -56,5 +65,9 @@ const CampaignSchema = new Schema<ICampaign>(
     timestamps: true,
   }
 );
+
+// Compound index for querying user campaigns by category and status
+CampaignSchema.index({ userId: 1, status: 1 });
+CampaignSchema.index({ recipientWallet: 1, status: 1 });
 
 export const Campaign = model<ICampaign>('Campaign', CampaignSchema);

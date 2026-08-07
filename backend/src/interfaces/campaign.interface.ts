@@ -1,8 +1,9 @@
 import { Document as MongooseDocument, Types } from 'mongoose';
 
-export type CampaignStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'ACTIVE' | 'REJECTED' | 'COMPLETED';
+export type CampaignStatus = 'DRAFT' | 'PENDING_VERIFICATION' | 'APPROVED' | 'ACTIVE' | 'REJECTED' | 'COMPLETED';
 
 export interface ICampaign extends MongooseDocument {
+  userId?: Types.ObjectId;
   title: string;
   description: string;
   targetAmount: number;

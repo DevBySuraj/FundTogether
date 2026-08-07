@@ -3,22 +3,11 @@ import { IUser } from '../interfaces/user.interface';
 
 const UserSchema = new Schema<IUser>(
   {
-    walletAddress: {
+    googleId: {
       type: String,
-      required: true,
       unique: true,
-      lowercase: true,
-      trim: true,
+      sparse: true,
       index: true,
-    },
-    nonce: {
-      type: String,
-      required: true,
-    },
-    role: {
-      type: String,
-      enum: ['user', 'donor', 'admin'],
-      default: 'donor',
     },
     name: {
       type: String,
@@ -28,9 +17,47 @@ const UserSchema = new Schema<IUser>(
       type: String,
       trim: true,
       lowercase: true,
+      sparse: true,
+      index: true,
+    },
+    profilePicture: {
+      type: String,
+    },
+    role: {
+      type: String,
+      enum: ['recipient', 'user', 'donor', 'admin'],
+      default: 'donor',
+      required: true,
+    },
+    walletAddress: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      sparse: true,
+      index: true,
+    },
+    walletVerified: {
+      type: Boolean,
+      default: false,
+    },
+    walletNonce: {
+      type: String,
+    },
+    walletNonceExpires: {
+      type: Date,
+    },
+    walletVerifiedAt: {
+      type: Date,
+    },
+    nonce: {
+      type: String,
     },
     password: {
       type: String,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   {

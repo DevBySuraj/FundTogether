@@ -2,8 +2,10 @@ import { Request } from 'express';
 import { UserRole } from '../interfaces/user.interface';
 
 export interface AuthUserPayload {
-  userId: string;
-  walletAddress: string;
+  id: string;
+  userId?: string;
+  email?: string;
+  walletAddress?: string;
   role: UserRole;
 }
 

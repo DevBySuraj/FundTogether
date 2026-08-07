@@ -3,6 +3,16 @@ import { IDocument } from '../interfaces/document.interface';
 
 const DocumentSchema = new Schema<IDocument>(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
+    campaignId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Campaign',
+      index: true,
+    },
     originalName: {
       type: String,
       required: true,

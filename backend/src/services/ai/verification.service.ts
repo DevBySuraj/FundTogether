@@ -1,10 +1,12 @@
 import { DocumentModel } from '../../models/Document';
 import { Verification } from '../../models/Verification';
 import { Campaign } from '../../models/Campaign';
+import { Notification } from '../../models/Notification';
 import { geminiService } from './gemini.service';
 import { calculateFileSha256 } from '../../utils/crypto';
 import { IVerification } from '../../interfaces/verification.interface';
 import { logger } from '../../utils/logger';
+import { Types } from 'mongoose';
 
 export class VerificationService {
   /**
@@ -13,7 +15,8 @@ export class VerificationService {
   public async processUploadAndVerify(
     file: Express.Multer.File,
     campaignId?: string,
-    uploadedBy?: string
+    uploadedBy?: string,
+    userId?: string
   ): Promise<{ document: any; verification: IVerification }> {
     logger.info(`[Verification Service] Processing file upload: ${file.originalname}`);
 
@@ -21,7 +24,7 @@ export class VerificationService {
     const sha256Hash = await calculateFileSha256(file.path);
 
     // Step 2: Save Document metadata to MongoDB
-    const documentDoc = await DocumentModel.create({
+    const docData: any = {
       originalName: file.originalname,
       filename: file.filename,
       path: file.path,
@@ -29,14 +32,23 @@ export class VerificationService {
       size: file.size,
       sha256Hash,
       uploadedBy,
-    });
+    };
+
+    if (userId && Types.ObjectId.isValid(userId)) {
+      docData.userId = new Types.ObjectId(userId);
+    }
+    if (campaignId && Types.ObjectId.isValid(campaignId)) {
+      docData.campaignId = new Types.ObjectId(campaignId);
+    }
+
+    const documentDoc = await DocumentModel.create(docData);
 
     // Step 3: Run Gemini AI OCR & Document Verification
     const aiResult = await geminiService.analyzeDocument(file.path, file.mimetype);
 
     // Step 4: Save Verification record in MongoDB
     const verificationDoc = await Verification.create({
-      campaignId: campaignId ? campaignId : undefined,
+      campaignId: campaignId && Types.ObjectId.isValid(campaignId) ? new Types.ObjectId(campaignId) : undefined,
       documentId: documentDoc._id,
       documentType: aiResult.documentType,
       confidence: aiResult.confidence,
@@ -49,11 +61,21 @@ export class VerificationService {
     });
 
     // Step 5: If campaign ID provided, link verification to campaign and update status
-    if (campaignId) {
+    if (campaignId && Types.ObjectId.isValid(campaignId)) {
       await Campaign.findByIdAndUpdate(campaignId, {
         verificationId: verificationDoc._id,
         documentHash: sha256Hash,
         status: 'PENDING_VERIFICATION',
+      });
+    }
+
+    // Step 6: Create user notification if userId available
+    if (userId && Types.ObjectId.isValid(userId)) {
+      await Notification.create({
+        userId: new Types.ObjectId(userId),
+        title: 'Hospital Verification Uploaded',
+        message: `Medical document "${file.originalname}" successfully submitted for AI review (Confidence: ${aiResult.confidence}%).`,
+        type: 'info',
       });
     }
 
