@@ -1,0 +1,1334 @@
+/*========================================================
+
+    fundTogether
+    Brutalist UI
+    style.css
+    PART 1
+
+=========================================================*/
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root{
+
+    --bg:#0f0f10;
+    --bg2:#191919;
+    --card:#202020;
+
+    --text:#ffffff;
+    --muted:#b6b6b6;
+
+    --accent:#f6ff00;
+    --accent2:#00ffc3;
+
+    --border:#ffffff;
+
+    --shadow:8px 8px 0px #ffffff;
+
+    --radius:0px;
+
+    --transition:.28s cubic-bezier(.2,.8,.2,1);
+
+}
+
+[data-bs-theme="light"]{
+
+    --bg:#f7f7f7;
+    --bg2:#ffffff;
+    --card:#ffffff;
+
+    --text:#111111;
+    --muted:#666666;
+
+    --border:#000000;
+
+    --shadow:8px 8px 0px #000000;
+
+}
+
+/*========================================================*/
+
+*{
+
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+
+}
+
+html{
+
+    scroll-behavior:smooth;
+
+}
+
+body{
+
+    font-family:'Space Grotesk',sans-serif;
+
+    background:var(--bg);
+
+    color:var(--text);
+
+    overflow-x:hidden;
+
+    transition:var(--transition);
+
+}
+
+/*========================================================*/
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:var(--accent);
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:var(--bg);
+
+}
+
+/*========================================================*/
+
+.page{
+
+    display:none;
+
+    min-height:100vh;
+
+    animation:fade .45s;
+
+}
+
+.active-page{
+
+    display:block;
+
+}
+
+@keyframes fade{
+
+    from{
+
+        opacity:0;
+        transform:translateY(25px);
+
+    }
+
+    to{
+
+        opacity:1;
+        transform:translateY(0);
+
+    }
+
+}
+
+/*========================================================*/
+
+.brutal-nav{
+
+    background:rgba(20,20,20,.75);
+
+    backdrop-filter:blur(18px);
+
+    border-bottom:3px solid var(--border);
+
+}
+
+[data-bs-theme="light"] .brutal-nav{
+
+    background:rgba(255,255,255,.8);
+
+}
+
+/*========================================================*/
+
+.brutal-logo{
+
+    color:var(--accent);
+
+    font-size:2rem;
+
+    font-weight:800;
+
+    text-transform:uppercase;
+
+    letter-spacing:2px;
+
+    transition:.25s;
+
+}
+
+.brutal-logo:hover{
+
+    transform:rotate(-2deg) scale(1.04);
+
+    color:var(--accent2);
+
+}
+
+/*========================================================*/
+
+.brutal-btn{
+
+    background:var(--accent);
+
+    color:#000;
+
+    font-weight:700;
+
+    border:3px solid #000;
+
+    border-radius:0;
+
+    padding:12px 22px;
+
+    transition:var(--transition);
+
+}
+
+.brutal-btn:hover{
+
+    background:var(--accent2);
+
+    color:#000;
+
+    transform:translate(-4px,-4px);
+
+    box-shadow:8px 8px 0 #000;
+
+}
+
+[data-bs-theme="light"] .brutal-btn{
+
+    border:3px solid #000;
+
+}
+
+.dropdown:hover>.dropdown-menu{
+
+    display:block;
+
+    margin-top:0;
+
+}
+
+/*========================================================*/
+
+.brutal-dropdown{
+
+    border-radius:0;
+
+    border:3px solid var(--border);
+
+    background:var(--card);
+
+    padding:10px;
+
+    box-shadow:var(--shadow);
+
+}
+
+.brutal-dropdown .dropdown-header{
+
+    color:var(--accent);
+
+    font-size:.95rem;
+
+    letter-spacing:1px;
+
+}
+
+.brutal-dropdown .dropdown-item{
+
+    color:var(--text);
+
+    font-weight:600;
+
+    padding:.8rem 1rem;
+
+    transition:.25s;
+
+}
+
+.brutal-dropdown .dropdown-item:hover{
+
+    background:var(--accent);
+
+    color:#000;
+
+    transform:translateX(8px);
+
+}
+
+/*========================================================*/
+
+.theme-btn{
+
+    width:56px;
+
+    height:56px;
+
+    border:none;
+
+    background:var(--accent);
+
+    color:#000;
+
+    font-size:1.3rem;
+
+    font-weight:700;
+
+    transition:var(--transition);
+
+}
+
+.theme-btn:hover{
+
+    transform:rotate(180deg);
+
+    background:var(--accent2);
+
+    box-shadow:var(--shadow);
+
+}
+
+/*========================================================*/
+
+.hero-container{
+
+    padding-top:130px;
+
+}
+
+.hero-tag{
+
+    display:inline-block;
+
+    margin-bottom:30px;
+
+    padding:12px 22px;
+
+    background:var(--accent2);
+
+    color:#000;
+
+    font-weight:700;
+
+    border:3px solid #000;
+
+}
+
+.hero-title{
+
+    font-size:clamp(3rem,9vw,7rem);
+
+    font-weight:900;
+
+    line-height:.92;
+
+    text-transform:uppercase;
+
+    max-width:900px;
+
+}
+
+/*========================================================*/
+
+.cta-btn{
+
+    background:var(--accent);
+
+    color:#000;
+
+    border:3px solid #000;
+
+    border-radius:0;
+
+    padding:18px 42px;
+
+    font-size:1rem;
+
+    font-weight:800;
+
+    text-transform:uppercase;
+
+    transition:var(--transition);
+
+}
+
+.cta-btn:hover{
+
+    transform:translate(-8px,-8px);
+
+    box-shadow:12px 12px 0 #000;
+
+    background:var(--accent2);
+
+}
+
+/*========================================================*/
+
+.outline-btn{
+
+    background:transparent;
+
+    color:var(--text);
+
+    border:3px solid var(--border);
+
+    border-radius:0;
+
+    padding:18px 42px;
+
+    font-weight:700;
+
+    transition:var(--transition);
+
+}
+
+.outline-btn:hover{
+
+    background:var(--text);
+
+    color:var(--bg);
+
+    transform:translateY(-6px);
+
+}
+
+/*========================================================*/
+
+.page-title{
+
+    font-size:3rem;
+
+    font-weight:900;
+
+    text-transform:uppercase;
+
+    letter-spacing:2px;
+
+}
+
+.section-heading{
+
+    font-weight:800;
+
+    margin-bottom:25px;
+
+}
+
+/*========================================================*/
+
+.brutal-back{
+
+    background:var(--accent);
+
+    color:#000;
+
+    border:3px solid #000;
+
+    border-radius:0;
+
+    font-weight:700;
+
+    padding:12px 24px;
+
+}
+
+.brutal-back:hover{
+
+    background:var(--accent2);
+
+    transform:translateX(-6px);
+
+}
+
+/*========================================================*/
+
+.brutal-input{
+
+    border-radius:0;
+
+    border:3px solid var(--border);
+
+    background:var(--card);
+
+    color:var(--text);
+
+    padding:18px;
+
+    font-size:1rem;
+
+    transition:.25s;
+
+}
+
+.brutal-input:focus{
+
+    background:var(--card);
+
+    color:var(--text);
+
+    box-shadow:8px 8px 0 var(--accent);
+
+    border-color:var(--accent);
+
+}
+
+.brutal-input::placeholder{
+
+    color:var(--muted);
+
+}
+
+/*========================================================
+
+        SEARCH PAGE
+
+=========================================================*/
+
+.search-box{
+
+    max-width:900px;
+
+    margin:auto;
+
+}
+
+.search-box input{
+
+    height:70px;
+
+    font-size:1.1rem;
+
+}
+
+.campaign-card{
+
+    background:var(--card);
+
+    border:3px solid var(--border);
+
+    cursor:pointer;
+
+    overflow:hidden;
+
+    transition:var(--transition);
+
+    box-shadow:var(--shadow);
+
+}
+
+.campaign-card:hover{
+
+    transform:translate(-10px,-10px) rotate(-1deg);
+
+}
+
+.campaign-card img{
+
+    width:100%;
+
+    height:320px;
+
+    object-fit:cover;
+
+    transition:.4s;
+
+}
+
+.campaign-card:hover img{
+
+    transform:scale(1.05);
+
+}
+
+.campaign-card h3{
+
+    font-size:2rem;
+
+    font-weight:800;
+
+}
+
+.campaign-card p{
+
+    color:var(--muted);
+
+    margin:.5rem 0;
+
+}
+
+.campaign-card h4{
+
+    font-weight:900;
+
+    color:var(--accent);
+
+}
+
+/*========================================================
+
+        PROFILE CARD
+
+=========================================================*/
+
+.profile-card{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:20px;
+
+    width:340px;
+
+    padding:25px;
+
+    background:var(--card);
+
+    border:3px solid var(--border);
+
+    box-shadow:var(--shadow);
+
+    transition:.3s;
+
+    cursor:pointer;
+
+}
+
+.profile-card:hover{
+
+    transform:translate(-8px,-8px);
+
+}
+
+.profile-card img{
+
+    width:90px;
+
+    height:90px;
+
+    border-radius:50%;
+
+    object-fit:cover;
+
+    border:3px solid var(--accent);
+
+}
+
+.profile-card h4{
+
+    margin:0;
+
+    font-size:1.4rem;
+
+    font-weight:700;
+
+}
+
+/*========================================================
+
+        CATEGORY PAGE
+
+=========================================================*/
+
+.category-card{
+
+    background:var(--card);
+
+    border:3px solid var(--border);
+
+    height:260px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    cursor:pointer;
+
+    transition:var(--transition);
+
+    box-shadow:var(--shadow);
+
+    overflow:hidden;
+
+}
+
+.category-card:hover{
+
+    transform:translate(-12px,-12px) rotate(-2deg);
+
+    background:var(--accent);
+
+    color:#000;
+
+}
+
+.category-card i{
+
+    font-size:4rem;
+
+    margin-bottom:25px;
+
+    transition:.3s;
+
+}
+
+.category-card:hover i{
+
+    transform:scale(1.25) rotate(12deg);
+
+}
+
+.category-card h4{
+
+    font-weight:800;
+
+    text-transform:uppercase;
+
+    letter-spacing:1px;
+
+}
+
+/*========================================================
+
+        CAMPAIGN DETAILS
+
+=========================================================*/
+
+.campaign-full{
+
+    background:var(--card);
+
+    border:3px solid var(--border);
+
+    padding:30px;
+
+    box-shadow:var(--shadow);
+
+}
+
+.campaign-full img{
+
+    width:100%;
+
+    height:520px;
+
+    object-fit:cover;
+
+    border:3px solid var(--border);
+
+}
+
+.campaign-full h1{
+
+    font-size:3rem;
+
+    font-weight:900;
+
+}
+
+.campaign-full h3{
+
+    color:var(--accent);
+
+    font-weight:900;
+
+}
+
+.campaign-full p{
+
+    font-size:1.05rem;
+
+    line-height:1.9;
+
+    color:var(--muted);
+
+}
+
+/*========================================================
+
+        CREATE CAMPAIGN
+
+=========================================================*/
+
+#campaignForm{
+
+    max-width:900px;
+
+}
+
+#campaignForm textarea{
+
+    resize:none;
+
+}
+
+.note-box{
+
+    background:rgba(255,255,0,.08);
+
+    border-left:6px solid var(--accent);
+
+    padding:25px;
+
+    font-size:1rem;
+
+    max-width:900px;
+
+}
+
+/*========================================================
+
+        SIGN IN MODAL
+
+=========================================================*/
+
+.brutal-modal{
+
+    background:var(--bg);
+
+    color:var(--text);
+
+    border:none;
+
+}
+
+.modal-content{
+
+    border-radius:0;
+
+}
+
+.modal-body h1{
+
+    font-size:4rem;
+
+    font-weight:900;
+
+    text-transform:uppercase;
+
+}
+
+.btn-close{
+
+    transform:scale(1.3);
+
+}
+
+.btn-close:hover{
+
+    transform:scale(1.3) rotate(180deg);
+
+}
+
+/*========================================================
+
+        QR MODAL
+
+=========================================================*/
+
+#qrModal img{
+
+    width:300px;
+
+    border:4px solid var(--accent);
+
+    background:white;
+
+    padding:12px;
+
+    transition:.35s;
+
+}
+
+#qrModal img:hover{
+
+    transform:scale(1.05);
+
+}
+
+/*========================================================
+
+        FLOATING BACKGROUND
+
+=========================================================*/
+
+body::before{
+
+    content:"";
+
+    position:fixed;
+
+    top:-200px;
+
+    left:-200px;
+
+    width:450px;
+
+    height:450px;
+
+    background:var(--accent);
+
+    opacity:.07;
+
+    border-radius:50%;
+
+    filter:blur(120px);
+
+    z-index:-1;
+
+}
+
+body::after{
+
+    content:"";
+
+    position:fixed;
+
+    right:-200px;
+
+    bottom:-200px;
+
+    width:450px;
+
+    height:450px;
+
+    background:var(--accent2);
+
+    opacity:.07;
+
+    border-radius:50%;
+
+    filter:blur(120px);
+
+    z-index:-1;
+
+}
+
+/*========================================================
+
+        MICRO INTERACTIONS
+
+=========================================================*/
+
+button,
+.category-card,
+.profile-card,
+.campaign-card,
+.brutal-btn,
+.theme-btn{
+
+    will-change:transform;
+
+}
+
+button:active,
+.brutal-btn:active,
+.theme-btn:active,
+.cta-btn:active{
+
+    transform:scale(.96);
+
+}
+
+/*========================================================
+
+        INPUT STATES
+
+=========================================================*/
+
+.brutal-input:invalid{
+
+    border-color:#ff3b3b;
+
+}
+
+.brutal-input:valid{
+
+    border-color:#3dff84;
+
+}
+
+textarea{
+
+    min-height:220px;
+
+}
+
+/*========================================================
+
+        FILE INPUT
+
+=========================================================*/
+
+input[type=file]{
+
+    cursor:pointer;
+
+}
+
+input[type=file]::file-selector-button{
+
+    background:var(--accent);
+
+    color:#000;
+
+    border:none;
+
+    padding:12px 20px;
+
+    font-weight:700;
+
+    margin-right:20px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+input[type=file]::file-selector-button:hover{
+
+    background:var(--accent2);
+
+}
+
+/*========================================================
+
+        MODAL SCROLLBAR
+
+=========================================================*/
+
+.modal-body{
+
+    overflow-y:auto;
+
+}
+
+.modal-body::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+.modal-body::-webkit-scrollbar-thumb{
+
+    background:var(--accent);
+
+}
+
+/*========================================================
+
+        IMAGE SELECTION
+
+=========================================================*/
+
+img{
+
+    user-select:none;
+
+    -webkit-user-drag:none;
+
+}
+
+/*========================================================
+
+        UTILITIES
+
+=========================================================*/
+
+.text-accent{
+
+    color:var(--accent);
+
+}
+
+.text-muted{
+
+    color:var(--muted)!important;
+
+}
+
+.bg-accent{
+
+    background:var(--accent);
+
+    color:#000;
+
+}
+
+.shadow-brutal{
+
+    box-shadow:var(--shadow);
+
+}
+
+.border-brutal{
+
+    border:3px solid var(--border);
+
+}
+
+/*========================================================
+
+        ANIMATIONS
+
+=========================================================*/
+
+@keyframes float{
+
+    0%{
+
+        transform:translateY(0px);
+
+    }
+
+    50%{
+
+        transform:translateY(-14px);
+
+    }
+
+    100%{
+
+        transform:translateY(0px);
+
+    }
+
+}
+
+@keyframes pulse{
+
+    0%{
+
+        transform:scale(1);
+
+    }
+
+    50%{
+
+        transform:scale(1.04);
+
+    }
+
+    100%{
+
+        transform:scale(1);
+
+    }
+
+}
+
+@keyframes slideUp{
+
+    from{
+
+        opacity:0;
+
+        transform:translateY(80px);
+
+    }
+
+    to{
+
+        opacity:1;
+
+        transform:translateY(0);
+
+    }
+
+}
+
+.hero-tag{
+
+    animation:float 4s ease-in-out infinite;
+
+}
+
+.hero-title{
+
+    animation:slideUp .8s ease;
+
+}
+
+.cta-btn{
+
+    animation:pulse 4s infinite;
+
+}
+
+/*========================================================
+
+        HOVER EFFECTS
+
+=========================================================*/
+
+.page-title:hover{
+
+    color:var(--accent);
+
+    transition:.3s;
+
+}
+
+.section-heading:hover{
+
+    transform:translateX(10px);
+
+    transition:.3s;
+
+}
+
+/*========================================================
+
+        RESPONSIVE
+
+=========================================================*/
+
+@media(max-width:1200px){
+
+    .hero-title{
+
+        font-size:5rem;
+
+    }
+
+}
+
+@media(max-width:992px){
+
+    .navbar-brand{
+
+        margin:20px auto;
+
+    }
+
+    .hero-title{
+
+        font-size:4rem;
+
+    }
+
+    .campaign-full img{
+
+        height:380px;
+
+    }
+
+    .category-card{
+
+        height:220px;
+
+    }
+
+}
+
+@media(max-width:768px){
+
+    .hero-container{
+
+        text-align:center;
+
+    }
+
+    .hero-title{
+
+        font-size:3rem;
+
+    }
+
+    .page-title{
+
+        font-size:2.3rem;
+
+    }
+
+    .campaign-card img{
+
+        height:240px;
+
+    }
+
+    .campaign-full img{
+
+        height:260px;
+
+    }
+
+    .profile-card{
+
+        width:100%;
+
+    }
+
+    .modal-body h1{
+
+        font-size:2.8rem;
+
+    }
+
+    .cta-btn,
+    .outline-btn{
+
+        width:100%;
+
+    }
+
+}
+
+@media(max-width:576px){
+
+    .hero-title{
+
+        font-size:2.4rem;
+
+    }
+
+    .hero-tag{
+
+        font-size:.8rem;
+
+    }
+
+    .campaign-full{
+
+        padding:18px;
+
+    }
+
+    .category-card{
+
+        height:180px;
+
+    }
+
+    .category-card i{
+
+        font-size:3rem;
+
+    }
+
+}
+
+/*========================================================
+
+        END OF STYLE.CSS
+
+=========================================================*/
