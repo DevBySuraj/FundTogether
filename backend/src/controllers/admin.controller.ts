@@ -10,14 +10,20 @@ import { sendSuccess, sendError } from '../utils/response';
 export class AdminController {
   public getPendingVerifications = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
     try {
-      const pendingList = await Verification.find({ status: 'PENDING' })
+      const { status } = req.query;
+      const queryFilter: any = {};
+      if (status && status !== 'ALL') {
+        queryFilter.status = status;
+      }
+
+      const list = await Verification.find(queryFilter)
         .populate('documentId')
         .populate('campaignId')
         .sort({ createdAt: -1 });
 
-      return sendSuccess(res, pendingList, 'Pending verifications retrieved successfully');
+      return sendSuccess(res, list, 'Verifications retrieved successfully');
     } catch (error: any) {
-      return sendError(res, error.message || 'Failed to fetch pending verifications', 500);
+      return sendError(res, error.message || 'Failed to fetch verifications', 500);
     }
   };
 
