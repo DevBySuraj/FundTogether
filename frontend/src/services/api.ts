@@ -20,8 +20,20 @@ export const authAPI = {
     const res = await api.post('/auth/connect-wallet', { walletAddress });
     return res.data;
   },
-  verifySignature: async (walletAddress: string, signature: string) => {
-    const res = await api.post('/auth/verify-signature', { walletAddress, signature });
+  verifySignature: async (walletAddress: string, signature: string, role?: string) => {
+    const res = await api.post('/auth/verify-signature', { walletAddress, signature, role });
+    return res.data;
+  },
+  login: async (email: string, password: string, role?: string) => {
+    const res = await api.post('/auth/login', { email, password, role });
+    return res.data;
+  },
+  register: async (email: string, password: string, role?: string) => {
+    const res = await api.post('/auth/register', { email, password, role });
+    return res.data;
+  },
+  googleLogin: async (credential: string, role?: string) => {
+    const res = await api.post('/auth/google', { credential, role });
     return res.data;
   },
 };

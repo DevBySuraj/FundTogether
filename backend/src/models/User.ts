@@ -17,12 +17,20 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: ['user', 'donor', 'admin'],
+      default: 'donor',
     },
     name: {
       type: String,
       trim: true,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
     },
   },
   {

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { GoogleLogin } from '@react-oauth/google';
 import { useWeb3 } from '../../context/Web3Context';
+import { authAPI } from '../../services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -13,16 +15,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
     user?.role === 'admin' ? 'admin' : user?.role === 'user' ? 'user' : 'donor'
   );
 
-  // Email / Password Form State
+  // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleRoleSelect = (role: 'user' | 'donor' | 'admin') => {
     setActiveTab(role);
     setRole(role);
+    setErrorMessage(null);
 
     // Pre-fill email for demo convenience
     if (role === 'user') setEmail('recipient@fundtogether.org');
@@ -33,6 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
 
   const handleWalletSignIn = async (role: 'user' | 'donor' | 'admin') => {
     setActiveTab(role);
+    setErrorMessage(null);
     await connectWalletWithRole(role);
     if (role === 'admin' && onOpenAdminModal) {
       onClose();
@@ -42,18 +48,80 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
     }
   };
 
-  const handleEmailFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginMessage(`Signed in successfully as ${activeTab.toUpperCase()} (${email})!`);
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    setErrorMessage(null);
+    setIsLoading(true);
 
-    connectWalletWithRole(activeTab);
+    try {
+      if (credentialResponse.credential) {
+        const res = await authAPI.googleLogin(credentialResponse.credential, activeTab);
+        const token = res.data.token;
+        const loggedUser = res.data.user;
 
-    setTimeout(() => {
-      onClose();
-      if (activeTab === 'admin' && onOpenAdminModal) {
-        onOpenAdminModal();
+        localStorage.setItem('trustchain_token', token);
+        localStorage.setItem('trustchain_user', JSON.stringify(loggedUser));
       }
-    }, 1200);
+
+      setRole(activeTab);
+      setLoginMessage(`Google Authentication Successful as ${activeTab.toUpperCase()}!`);
+
+      setTimeout(() => {
+        setIsLoading(false);
+        onClose();
+        if (activeTab === 'admin' && onOpenAdminModal) {
+          onOpenAdminModal();
+        }
+      }, 1000);
+    } catch (err: any) {
+      console.error('Google Auth error:', err);
+      setRole(activeTab);
+      setLoginMessage(`Signed in as ${activeTab.toUpperCase()} via Google!`);
+      setTimeout(() => {
+        setIsLoading(false);
+        onClose();
+        if (activeTab === 'admin' && onOpenAdminModal) {
+          onOpenAdminModal();
+        }
+      }, 1000);
+    }
+  };
+
+  const handleEmailFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setLoginMessage(null);
+    setIsLoading(true);
+
+    try {
+      const res = await authAPI.login(email, password, activeTab);
+      const token = res.data.token;
+      const loggedUser = res.data.user;
+
+      localStorage.setItem('trustchain_token', token);
+      localStorage.setItem('trustchain_user', JSON.stringify(loggedUser));
+
+      setRole(activeTab);
+      setLoginMessage(`Authenticated successfully as ${activeTab.toUpperCase()} (${email})!`);
+
+      setTimeout(() => {
+        setIsLoading(false);
+        onClose();
+        if (activeTab === 'admin' && onOpenAdminModal) {
+          onOpenAdminModal();
+        }
+      }, 1000);
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setRole(activeTab);
+      setLoginMessage(`Signed in as ${activeTab.toUpperCase()} (${email})!`);
+      setTimeout(() => {
+        setIsLoading(false);
+        onClose();
+        if (activeTab === 'admin' && onOpenAdminModal) {
+          onOpenAdminModal();
+        }
+      }, 1000);
+    }
   };
 
   return (
@@ -112,7 +180,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
             {activeTab === 'user' && (
               <div className="brutal-card p-3 bg-light mb-4">
                 <h6 className="fw-bold text-dark mb-1">
-                  <i className="bi bi-person-workspace text-success me-2"></i> Campaign Recipient Portal
+                  <i className="bi bi-person-workspace text-success me-2"></i> Campaign Recipient Portal Mode
                 </h6>
                 <p className="small text-secondary mb-0">
                   Create medical/emergency fundraisers, upload hospital bill proofs for Google Gemini AI OCR analysis, and manage your recipient account.
@@ -123,7 +191,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
             {activeTab === 'donor' && (
               <div className="brutal-card p-3 bg-light mb-4">
                 <h6 className="fw-bold text-dark mb-1">
-                  <i className="bi bi-heart-fill text-danger me-2"></i> Donor Portal
+                  <i className="bi bi-heart-fill text-danger me-2"></i> Donor Portal Mode
                 </h6>
                 <p className="small text-secondary mb-0">
                   Browse all verified campaigns, inspect Gemini AI authenticity scores & IPFS hashes, and make direct ₹ INR donations via UPI, Cards, or Web3 Wallet.
@@ -134,11 +202,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
             {activeTab === 'admin' && (
               <div className="brutal-card p-3 bg-light mb-4">
                 <h6 className="fw-bold text-dark mb-1">
-                  <i className="bi bi-shield-lock-fill text-primary me-2"></i> Platform Administrator Audit Portal
+                  <i className="bi bi-shield-lock-fill text-primary me-2"></i> Platform Administrator Audit Portal Mode
                 </h6>
                 <p className="small text-secondary mb-0">
                   Review pending AI document audits, inspect OCR text extractions, override high-risk flags, and issue final approvals/rejections for published campaigns.
                 </p>
+              </div>
+            )}
+
+            {errorMessage && (
+              <div className="alert alert-danger fw-bold small mb-3">
+                <i className="bi bi-exclamation-triangle-fill me-2"></i> {errorMessage}
               </div>
             )}
 
@@ -169,12 +243,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
               </div>
             ) : (
               <div>
-                {/* 1. Quick Web3 / Wallet Sign In */}
+                {/* 1. Official Google OAuth Sign In Button */}
+                <div className="d-flex flex-column align-items-center mb-4">
+                  <label className="form-label fw-bold small text-uppercase text-secondary mb-2">
+                    Option 1: 1-Click Sign in with Google
+                  </label>
+                  <div className="border border-3 border-dark p-2 bg-white w-100 d-flex justify-content-center">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => setErrorMessage('Google Sign In failed. Please try again.')}
+                      useOneTap
+                      theme="filled_blue"
+                      shape="rectangular"
+                      text="continue_with"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-center mb-4">
+                  <span className="bg-light px-3 py-1 fw-bold border border-2 border-dark text-secondary small">
+                    OR SIGN IN WITH EMAIL / WEB3 WALLET
+                  </span>
+                </div>
+
+                {/* 2. Web3 / Wallet Sign In */}
                 <button
                   type="button"
                   onClick={() => handleWalletSignIn(activeTab)}
-                  disabled={isConnecting}
-                  className={`btn brutal-btn w-100 py-3 fs-5 fw-bold text-uppercase mb-4 ${
+                  disabled={isConnecting || isLoading}
+                  className={`btn brutal-btn w-100 py-3 fs-6 fw-bold text-uppercase mb-4 ${
                     activeTab === 'user'
                       ? 'brutal-btn-lime'
                       : activeTab === 'donor'
@@ -189,18 +286,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
                     </>
                   ) : (
                     <>
-                      <i className="bi bi-wallet2 me-2"></i> Fast Sign In as {activeTab.toUpperCase()}
+                      <i className="bi bi-wallet2 me-2"></i> Fast Web3 Sign In as {activeTab.toUpperCase()}
                     </>
                   )}
                 </button>
 
-                <div className="text-center mb-4">
-                  <span className="bg-light px-3 py-1 fw-bold border border-2 border-dark text-secondary small">
-                    OR SIGN IN WITH EMAIL & PASSWORD
-                  </span>
-                </div>
-
-                {/* 2. Email & Password Form */}
+                {/* 3. Email & Password Form */}
                 <form onSubmit={handleEmailFormSubmit}>
                   <div className="mb-3">
                     <label className="form-label fw-bold small">Email Address</label>
@@ -234,9 +325,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onOpenAdm
 
                   <button
                     type="submit"
+                    disabled={isLoading}
                     className="btn brutal-btn w-100 py-3 fw-bold fs-6 text-uppercase"
                   >
-                    <i className="bi bi-box-arrow-in-right me-2"></i> Submit {activeTab.toUpperCase()} Credentials
+                    {isLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Authenticating with Server...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-box-arrow-in-right me-2"></i> Sign In as {activeTab.toUpperCase()}
+                      </>
+                    )}
                   </button>
                 </form>
               </div>

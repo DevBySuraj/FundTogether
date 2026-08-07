@@ -11,6 +11,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || 'default_trustchain_jwt_secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   pinataApiKey: process.env.PINATA_API_KEY || '',
   pinataSecretKey: process.env.PINATA_SECRET_API_KEY || '',
   pinataJwt: process.env.PINATA_JWT || '',

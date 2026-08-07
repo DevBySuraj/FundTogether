@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ThemeProvider } from './context/ThemeContext';
 import { Web3Provider } from './context/Web3Context';
 import { Navbar } from './components/layout/Navbar';
@@ -88,12 +89,18 @@ export const AppContent: React.FC = () => {
 };
 
 export const App: React.FC = () => {
+  const googleClientId =
+    (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
+    '109823741982734192837-demo.apps.googleusercontent.com';
+
   return (
-    <ThemeProvider>
-      <Web3Provider>
-        <AppContent />
-      </Web3Provider>
-    </ThemeProvider>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <ThemeProvider>
+        <Web3Provider>
+          <AppContent />
+        </Web3Provider>
+      </ThemeProvider>
+    </GoogleOAuthProvider>
   );
 };
 

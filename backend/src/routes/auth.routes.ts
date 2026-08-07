@@ -15,4 +15,22 @@ router.post('/connect-wallet', authController.connectWallet);
  */
 router.post('/verify-signature', authController.verifySignature);
 
+/**
+ * @route POST /auth/google
+ * @desc Verify Google OAuth ID Token and issue JWT session
+ */
+router.post('/google', authController.googleLogin);
+
+/**
+ * @route POST /auth/register
+ * @desc Register user with email and password
+ */
+router.post('/register', authController.register);
+
+/**
+ * @route POST /auth/login
+ * @desc Sign in user with email and password
+ */
+router.post('/login', authController.login);
+
 export default router;
