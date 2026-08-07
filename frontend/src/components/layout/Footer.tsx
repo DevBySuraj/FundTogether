@@ -3,32 +3,26 @@ import { ShieldCheck, Heart } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
-    <footer style={{
-      backgroundColor: 'var(--bg-secondary)',
-      borderTop: '3px solid var(--border-color)',
-      padding: '2.5rem 1.5rem',
-      marginTop: 'auto',
-    }}>
-      <div style={{
-        maxWidth: '1200px',
-        margin: '0 auto',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '1rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800 }}>
-          <ShieldCheck size={20} color="var(--accent-lime)" />
-          <span>TRUSTCHAIN / FUNDTOGETHER</span>
-        </div>
+    <footer className="mt-auto py-4 px-3 px-md-5" style={{ borderTop: '3px solid #111', background: '#fff' }}>
+      <div className="container-fluid">
+        <div className="row align-items-center gy-2 text-center text-md-start">
+          {/* Brand */}
+          <div className="col-12 col-md-4 d-flex justify-content-center justify-content-md-start align-items-center gap-2 fw-black">
+            <ShieldCheck size={18} color="#00d084" />
+            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>TRUSTCHAIN / FUNDTOGETHER</span>
+          </div>
 
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-          Transparent Blockchain Donations & Google Gemini AI Document Verification
-        </div>
+          {/* Tagline */}
+          <div className="col-12 col-md-4 d-flex justify-content-center">
+            <span style={{ fontSize: '0.8rem', color: '#666', fontWeight: 600 }}>
+              Transparent Donations &amp; Gemini AI Verification
+            </span>
+          </div>
 
-        <div style={{ fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          Made with <Heart size={14} color="var(--accent-magenta)" fill="var(--accent-magenta)" /> for AlgOlympia
+          {/* Credits */}
+          <div className="col-12 col-md-4 d-flex justify-content-center justify-content-md-end align-items-center gap-1" style={{ fontSize: '0.82rem', fontWeight: 700 }}>
+            Made with <Heart size={13} color="#ff4747" fill="#ff4747" /> for AlgOlympia
+          </div>
         </div>
       </div>
     </footer>
