@@ -1,8 +1,16 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
 import { env } from './env';
 import { User } from '../models/User';
 import { Campaign } from '../models/Campaign';
 import { logger } from '../utils/logger';
+
+// Force Node.js to use IPv4 first for DNS SRV records (fixes querySrv ECONNREFUSED on Windows DNS)
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignore if not supported
+}
 
 const syncCollectionIndexes = async () => {
   try {
@@ -34,7 +42,21 @@ export const connectDB = async (): Promise<typeof mongoose | null> => {
   } catch (primaryErr: any) {
     logger.warn(`[MongoDB Primary Error]: ${primaryErr.message}`);
 
-    // If Atlas primary connection failed (e.g. offline dev), attempt local MongoDB fallback
+    // If Atlas primary connection failed (e.g. DNS SRV failure or IP block), attempt Google DNS lookup retry
+    if (isAtlas && primaryErr.message?.includes('querySrv')) {
+      try {
+        logger.info('[MongoDB] Retrying SRV DNS lookup via Google DNS (8.8.8.8)...');
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+        const conn = await mongoose.connect(primaryUri, { autoIndex: true });
+        logger.info(`[MongoDB] Connected successfully via Google DNS to host: ${conn.connection.host}`);
+        await syncCollectionIndexes();
+        return conn;
+      } catch (dnsErr: any) {
+        logger.warn(`[MongoDB Google DNS Error]: ${dnsErr.message}`);
+      }
+    }
+
+    // Fallback to local MongoDB if Atlas cloud is completely unreachable
     if (isAtlas) {
       try {
         logger.info('[MongoDB Fallback] Connecting to local MongoDB instance (mongodb://127.0.0.1:27017/fundtogether)...');
