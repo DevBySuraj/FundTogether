@@ -1,6 +1,6 @@
 import { Document as MongooseDocument } from 'mongoose';
 
-export type UserRole = 'recipient' | 'user' | 'donor' | 'admin';
+export type UserRole = 'recipient' | 'user' | 'donor' | 'admin' | 'authority' | 'hospital' | 'investigator' | 'reviewer';
 
 export interface IUser extends MongooseDocument {
   googleId?: string;

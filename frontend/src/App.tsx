@@ -14,6 +14,7 @@ import { TrustReportModal } from './components/verification/TrustReportModal';
 import { DonateModal } from './components/donate/DonateModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { Footer } from './components/layout/Footer';
+import { WalletActivityPage } from './components/wallet/WalletActivityPage';
 import type { Campaign } from './types';
 
 // Admin Dedicated Frontend App Components
@@ -73,7 +74,6 @@ export const PublicPlatform: React.FC = () => {
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
         />
 
-        {/* If user is logged in, show role-based CampaignGrid (Recipient or Donor). If NOT logged in, show GuestLandingView. */}
         {user ? (
           <CampaignGrid
             selectedCategory={selectedCategory}
@@ -115,6 +115,33 @@ export const PublicPlatform: React.FC = () => {
   );
 };
 
+export const WalletActivityView: React.FC = () => {
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <Navbar
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        onOpenCreateModal={() => {}}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+      />
+
+      <main style={{ flex: 1 }}>
+        <WalletActivityPage />
+      </main>
+
+      <Footer />
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+    </div>
+  );
+};
+
 export const App: React.FC = () => {
   const googleClientId =
     (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) ||
@@ -129,6 +156,7 @@ export const App: React.FC = () => {
               <Routes>
                 {/* Public Platform Routes (Recipient & Donor) */}
                 <Route path="/" element={<PublicPlatform />} />
+                <Route path="/wallet-activity" element={<WalletActivityView />} />
 
                 {/* Admin Dedicated Entry Point */}
                 <Route path="/admin/login" element={<AdminLoginPage />} />

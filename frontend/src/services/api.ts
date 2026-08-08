@@ -171,3 +171,45 @@ export const donationAPI = {
     return res.data;
   },
 };
+
+export const walletActivityAPI = {
+  /**
+   * GET /wallet/activity — Role-filtered activity records & summary statistics
+   */
+  getActivity: async (filters?: Record<string, any>) => {
+    const res = await api.get('/wallet/activity', { params: filters });
+    return res.data;
+  },
+
+  /**
+   * GET /wallet/transactions — Role-filtered transactions list
+   */
+  getTransactions: async (filters?: Record<string, any>) => {
+    const res = await api.get('/wallet/transactions', { params: filters });
+    return res.data;
+  },
+
+  /**
+   * GET /wallet/statistics — Role-specific summary cards
+   */
+  getStatistics: async () => {
+    const res = await api.get('/wallet/statistics');
+    return res.data;
+  },
+
+  /**
+   * GET /wallet/summary — Dashboard summary widgets
+   */
+  getSummary: async () => {
+    const res = await api.get('/wallet/summary');
+    return res.data;
+  },
+
+  /**
+   * GET /wallet/details/:transactionHash — Comprehensive single transaction details
+   */
+  getTransactionDetails: async (transactionHash: string) => {
+    const res = await api.get(`/wallet/details/${transactionHash}`);
+    return res.data;
+  },
+};

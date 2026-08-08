@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useWeb3 } from '../../context/Web3Context';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -109,6 +110,16 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* RIGHT: Action Buttons */}
           <div className="d-flex align-items-center gap-2 ms-auto mt-3 mt-lg-0 flex-wrap">
+            {/* Wallet Activity Link for Authenticated / Active Sessions */}
+            {user && (
+              <Link
+                to="/wallet-activity"
+                className={`btn brutal-btn ${location.pathname === '/wallet-activity' ? 'brutal-btn-lime' : 'brutal-btn-yellow'}`}
+              >
+                <span>🪙 Wallet Activity</span>
+              </Link>
+            )}
+
             {/* Recipient Action: Start Campaign */}
             {isRecipient && (
               <button className="btn brutal-btn brutal-btn-lime" onClick={onOpenCreateModal}>
