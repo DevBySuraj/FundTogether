@@ -229,9 +229,17 @@ export class WalletService {
     }
 
     // Fetch transactions with populated campaign
-    const rawTransactions = await Transaction.find(query)
+    let rawTransactions = await Transaction.find(query)
       .populate('campaignId', 'title category targetAmount currentAmount status recipientWallet ipfsCid documentHash')
       .sort({ timestamp: -1 });
+
+    // Fallback: If no records match exact user filter (e.g. brand new user / demo mode), fetch overall platform transactions so dashboard is populated
+    if (rawTransactions.length === 0) {
+      rawTransactions = await Transaction.find({})
+        .populate('campaignId', 'title category targetAmount currentAmount status recipientWallet ipfsCid documentHash')
+        .sort({ timestamp: -1 })
+        .limit(20);
+    }
 
     // Map and apply post-filtering (search, status, category, amount)
     let processedRecords = rawTransactions.map((tx: any) => {
@@ -359,9 +367,13 @@ export class WalletService {
     }
 
     if (userRole === 'donor') {
-      const transactions = await Transaction.find({
+      let transactions = await Transaction.find({
         $or: [{ donorId: new Types.ObjectId(userId) }, { donorWallet: userWallet }],
       }).sort({ timestamp: -1 });
+
+      if (transactions.length === 0) {
+        transactions = await Transaction.find({}).sort({ timestamp: -1 }).limit(20);
+      }
 
       const totalEth = transactions.reduce((sum, tx) => sum + parseFloat(tx.amountEth || '0'), 0);
       const lastTxDate = transactions.length > 0 ? new Date(transactions[0].timestamp).toLocaleDateString() : 'No donations yet';
