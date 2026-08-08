@@ -32,7 +32,10 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // Database Connection Assurance Middleware for Serverless & Cloud Hosts
-app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+app.use(async (req: Request, res: Response, next: NextFunction) => {
+  // Allow health check endpoint without blocking
+  if (req.path === '/health') return next();
+
   if (mongoose.connection.readyState !== 1) {
     try {
       await connectDB();
@@ -40,6 +43,14 @@ app.use(async (_req: Request, _res: Response, next: NextFunction) => {
       console.error('[Database Assurance Middleware Error]:', err.message);
     }
   }
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'Database connection to MongoDB Atlas Cloud is not ready. Please verify your MONGODB_URI on hosting provider.',
+    });
+  }
+
   next();
 });
 

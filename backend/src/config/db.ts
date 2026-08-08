@@ -5,6 +5,9 @@ import { User } from '../models/User';
 import { Campaign } from '../models/Campaign';
 import { logger } from '../utils/logger';
 
+// STOP Mongoose from buffering queries for 10000ms when database is disconnected
+mongoose.set('bufferCommands', false);
+
 // Force Node.js to use IPv4 first for DNS SRV records (fixes querySrv ECONNREFUSED on Windows DNS)
 try {
   dns.setDefaultResultOrder('ipv4first');

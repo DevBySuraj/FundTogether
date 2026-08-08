@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../types';
 import { sendSuccess, sendError } from '../utils/response';
 import { User } from '../models/User';
 import { generateJwt } from '../utils/jwt';
+import mongoose from 'mongoose';
 
 export class AuthController {
   /**
@@ -38,6 +39,10 @@ export class AuthController {
    */
   public login = async (req: Request, res: Response): Promise<Response> => {
     try {
+      if (mongoose.connection.readyState !== 1) {
+        return sendError(res, 'Database connection is not ready. Please try again in a few seconds.', 503);
+      }
+
       const { email, password } = req.body;
 
       if (!email || !password) {
@@ -52,8 +57,7 @@ export class AuthController {
       return sendSuccess(res, result, 'Login successful', 200);
     } catch (err: any) {
       console.error('Login controller error:', err.message);
-      // Return 401 with generic error to prevent user enumeration
-      return sendError(res, 'Invalid email or password', 401);
+      return sendError(res, err.message || 'Invalid email or password', 401);
     }
   };
 
@@ -88,6 +92,10 @@ export class AuthController {
    */
   public googleLogin = async (req: Request, res: Response): Promise<Response> => {
     try {
+      if (mongoose.connection.readyState !== 1) {
+        return sendError(res, 'Database connection is not ready. Please try again in a few seconds.', 503);
+      }
+
       const { credential, idToken, token, role } = req.body;
       const tokenToVerify = idToken || credential || token;
 
