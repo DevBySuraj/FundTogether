@@ -132,10 +132,18 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
             {!isRecipientMode && (
               <button
                 onClick={() => onDonateClick(campaign)}
-                className="btn brutal-btn brutal-btn-lime fw-black"
+                className={`btn brutal-btn ${percent >= 100 || campaign.status === 'COMPLETED' ? 'brutal-btn-yellow' : 'brutal-btn-lime'} fw-black`}
                 id={`donate-btn-${campaign._id}`}
               >
-                <span className="me-1">🦊</span> Donate with MetaMask
+                {percent >= 100 || campaign.status === 'COMPLETED' ? (
+                  <>
+                    <i className="bi bi-trophy-fill text-dark me-1"></i> 🎉 Goal Accomplished (100% Funded)
+                  </>
+                ) : (
+                  <>
+                    <span className="me-1">🦊</span> Donate with MetaMask
+                  </>
+                )}
               </button>
             )}
           </div>

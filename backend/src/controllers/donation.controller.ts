@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { Transaction } from '../models/Transaction';
 import { Campaign } from '../models/Campaign';
 import { User } from '../models/User';
+import { Notification } from '../models/Notification';
 import { Types } from 'mongoose';
 import { sendSuccess, sendError } from '../utils/response';
 
@@ -170,7 +171,27 @@ export class DonationController {
       const amountNum = parseFloat(amount);
       if (!isNaN(amountNum) && amountNum > 0) {
         campaign.currentAmount = (campaign.currentAmount || 0) + amountNum;
+
+        // Auto-complete campaign when donation target is achieved
+        if (campaign.currentAmount >= campaign.targetAmount && (campaign.status === 'ACTIVE' || campaign.status === 'APPROVED')) {
+          campaign.status = 'COMPLETED';
+        }
+
         await campaign.save();
+
+        // Send celebratory notification to campaign recipient if goal reached
+        if (campaign.currentAmount >= campaign.targetAmount && campaign.userId) {
+          try {
+            await Notification.create({
+              userId: campaign.userId,
+              title: '🎉 Campaign 100% Fully Funded!',
+              message: `Congratulations! Your fundraiser "${campaign.title}" has reached 100% of its funding goal (${campaign.targetAmount} POL)!`,
+              type: 'success',
+            });
+          } catch {
+            // Non-blocking notification
+          }
+        }
       }
 
       return sendSuccess(
