@@ -7,11 +7,12 @@ export interface JwtPayload {
   userId?: string;
   email?: string;
   role: UserRole;
+  walletAddress?: string;
 }
 
 /**
  * Generate signed JWT Token
- * @param payload Object containing id, email, and role
+ * @param payload Object containing id, email, role, and optional walletAddress
  */
 export const generateJwt = (payload: JwtPayload): string => {
   return jwt.sign(
@@ -20,6 +21,7 @@ export const generateJwt = (payload: JwtPayload): string => {
       userId: payload.id,
       email: payload.email,
       role: payload.role,
+      walletAddress: payload.walletAddress,
     },
     env.jwtSecret,
     {
