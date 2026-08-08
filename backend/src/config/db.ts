@@ -4,35 +4,50 @@ import { User } from '../models/User';
 import { Campaign } from '../models/Campaign';
 import { logger } from '../utils/logger';
 
-export const connectDB = async (): Promise<typeof mongoose | null> => {
+const syncCollectionIndexes = async () => {
   try {
-    const uri = env.mongoUri;
-    const isAtlas = uri.includes('mongodb+srv') || uri.includes('mongodb.net');
+    await User.collection.dropIndex('walletAddress_1');
+    logger.info('[MongoDB] Legacy non-sparse walletAddress_1 index dropped.');
+  } catch {
+    // Ignore if index doesn't exist
+  }
+  await User.syncIndexes();
+  await Campaign.syncIndexes();
+};
 
-    logger.info(`[MongoDB] Connecting to ${isAtlas ? 'MongoDB Atlas Cloud Database' : 'Local MongoDB Database'}...`);
+export const connectDB = async (): Promise<typeof mongoose | null> => {
+  const primaryUri = env.mongoUri || 'mongodb://127.0.0.1:27017/fundtogether';
+  const localFallbackUri = 'mongodb://127.0.0.1:27017/fundtogether';
 
-    const conn = await mongoose.connect(uri, {
-      autoIndex: true, // Auto-build indexes in MongoDB Atlas
+  const isAtlas = primaryUri.includes('mongodb+srv') || primaryUri.includes('mongodb.net');
+
+  logger.info(`[MongoDB] Connecting to ${isAtlas ? 'MongoDB Atlas Cloud Database' : 'Database'}...`);
+
+  try {
+    const conn = await mongoose.connect(primaryUri, {
+      autoIndex: true,
     });
 
-    const host = conn.connection.host;
-    logger.info(`[MongoDB] Connected successfully to host: ${host}`);
-
-    // Drop legacy non-sparse walletAddress_1 index on MongoDB Atlas if present
-    try {
-      await User.collection.dropIndex('walletAddress_1');
-      logger.info('[MongoDB] Legacy non-sparse walletAddress_1 index dropped.');
-    } catch (e: any) {
-      // Ignore if index doesn't exist
-    }
-
-    // Ensure models initialize sparse unique indexes
-    await User.syncIndexes();
-    await Campaign.syncIndexes();
-
+    logger.info(`[MongoDB] Connected successfully to host: ${conn.connection.host}`);
+    await syncCollectionIndexes();
     return conn;
-  } catch (error: any) {
-    logger.error('[MongoDB Atlas Connection Error]:', error.message || error);
+  } catch (primaryErr: any) {
+    logger.warn(`[MongoDB Primary Error]: ${primaryErr.message}`);
+
+    // If Atlas primary connection failed (e.g. offline dev), attempt local MongoDB fallback
+    if (isAtlas) {
+      try {
+        logger.info('[MongoDB Fallback] Connecting to local MongoDB instance (mongodb://127.0.0.1:27017/fundtogether)...');
+        const conn = await mongoose.connect(localFallbackUri, {
+          autoIndex: true,
+        });
+        logger.info(`[MongoDB Fallback] Connected successfully to local host: ${conn.connection.host}`);
+        await syncCollectionIndexes();
+        return conn;
+      } catch (fallbackErr: any) {
+        logger.error('[MongoDB Fallback Error]: Could not connect to local MongoDB either.', fallbackErr.message);
+      }
+    }
     return null;
   }
 };
