@@ -3,11 +3,18 @@ import { ethers } from 'ethers';
 
 // ─── Polygon Amoy Testnet Configuration ──────────────────────────────────────
 export const POLYGON_AMOY_CHAIN_ID = 80002;
+
+// Multiple reliable public RPCs — MetaMask picks the first one that responds.
+// Ordered by reliability: Ankr > dRPC > official (rate-limited)
 export const POLYGON_AMOY_CONFIG = {
   chainId: '0x13882', // 80002 in hex
   chainName: 'Polygon Amoy Testnet',
   nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
-  rpcUrls: ['https://rpc-amoy.polygon.technology'],
+  rpcUrls: [
+    'https://rpc.ankr.com/polygon_amoy',        // Ankr — high rate limit, no key needed
+    'https://polygon-amoy.drpc.org',             // dRPC — decentralized, reliable
+    'https://rpc-amoy.polygon.technology',       // Official — fallback (rate-limited)
+  ],
   blockExplorerUrls: ['https://amoy.polygonscan.com'],
 };
 
@@ -30,6 +37,19 @@ export interface UseMetaMaskReturn extends MetaMaskState {
   getSigner: () => Promise<ethers.Signer | null>;
   isCorrectNetwork: boolean;
 }
+
+// ─── Read chainId directly from MetaMask without an RPC round-trip ───────────
+// eth_chainId is answered by MetaMask locally — no network call, no rate limit.
+const getChainIdFromMetaMask = async (): Promise<number | null> => {
+  try {
+    const chainIdHex = await (window as any).ethereum.request({
+      method: 'eth_chainId',
+    });
+    return parseInt(chainIdHex, 16);
+  } catch {
+    return null;
+  }
+};
 
 export const useMetaMask = (): UseMetaMaskReturn => {
   const [state, setState] = useState<MetaMaskState>({
@@ -70,16 +90,19 @@ export const useMetaMask = (): UseMetaMaskReturn => {
     setState((s) => ({ ...s, isConnecting: true, error: null }));
 
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
-      const accounts = await provider.send('eth_requestAccounts', []);
+      // eth_requestAccounts — answered by MetaMask locally, no RPC call
+      const accounts: string[] = await (window as any).ethereum.request({
+        method: 'eth_requestAccounts',
+      });
 
       if (!accounts || accounts.length === 0) {
         throw new Error('No accounts authorized. Please unlock MetaMask.');
       }
 
       const account = accounts[0].toLowerCase();
-      const network = await provider.getNetwork();
-      const chainId = Number(network.chainId);
+
+      // eth_chainId — also answered locally by MetaMask wallet, zero RPC traffic
+      const chainId = await getChainIdFromMetaMask();
 
       setState((s) => ({
         ...s,
@@ -104,6 +127,7 @@ export const useMetaMask = (): UseMetaMaskReturn => {
   const switchToPolygonAmoy = useCallback(async (): Promise<boolean> => {
     if (!(window as any).ethereum) return false;
     try {
+      // wallet_switchEthereumChain — local MetaMask call, no RPC
       await (window as any).ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: POLYGON_AMOY_CONFIG.chainId }],
@@ -111,12 +135,12 @@ export const useMetaMask = (): UseMetaMaskReturn => {
       setState((s) => ({ ...s, chainId: POLYGON_AMOY_CHAIN_ID, error: null }));
       return true;
     } catch (switchError: any) {
-      // Error code 4902: chain not added to MetaMask — add it
+      // 4902: chain not added yet — add with better RPC URLs
       if (switchError.code === 4902) {
         try {
           await (window as any).ethereum.request({
             method: 'wallet_addEthereumChain',
-            params: [POLYGON_AMOY_CONFIG],
+            params: [POLYGON_AMOY_CONFIG], // includes Ankr + dRPC + official
           });
           setState((s) => ({ ...s, chainId: POLYGON_AMOY_CHAIN_ID, error: null }));
           return true;

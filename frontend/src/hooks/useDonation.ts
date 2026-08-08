@@ -71,9 +71,13 @@ export const useDonation = (): UseDonationReturn => {
           return;
         }
 
-        // ── Step 3: Network check ──────────────────────────────────────────
-        const network = await provider.getNetwork();
-        const chainId = Number(network.chainId);
+        // ── Step 3: Network check — use eth_chainId (local, no RPC call) ────
+        // provider.getNetwork() triggers an eth_chainId RPC call which
+        // counts toward the rate limit. MetaMask answers eth_chainId locally.
+        const chainIdHex: string = await (window as any).ethereum.request({
+          method: 'eth_chainId',
+        });
+        const chainId = parseInt(chainIdHex, 16);
 
         if (chainId !== POLYGON_AMOY_CHAIN_ID) {
           setStep('wrong_network', {
@@ -174,9 +178,17 @@ export const useDonation = (): UseDonationReturn => {
           err.message?.includes('insufficient funds')
         ) {
           userMessage = 'Insufficient balance in your wallet for this donation.';
-        } else if (err.code === -32002 || err.message?.includes('too many errors')) {
+        } else if (
+          err.code === -32002 ||
+          err.message?.includes('too many errors') ||
+          err.message?.includes('rate limit') ||
+          err.message?.includes('coalesce')
+        ) {
+          // The public Amoy testnet RPC is rate-limited. This does NOT mean
+          // the tx failed — it means the network's public node is busy.
+          // The tx may have been submitted. Check PolygonScan to verify.
           userMessage =
-            'RPC rate limit hit. The transaction may still be processing — check PolygonScan with your wallet address.';
+            'The Polygon Amoy public RPC is busy right now. If you confirmed in MetaMask, your transaction was submitted — check amoy.polygonscan.com with your wallet address to verify.';
         } else if (err.code === 'NETWORK_ERROR') {
           userMessage = 'Network error. Please check your connection and try again.';
         } else if (err.code === 'CALL_EXCEPTION') {
