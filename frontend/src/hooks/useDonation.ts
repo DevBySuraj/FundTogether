@@ -11,8 +11,7 @@ const DONATION_CONTRACT_ABI = [
 ];
 
 // ─── How many ms to wait before calling backend after tx broadcast ────────────
-// Gives the node time to index the tx without hammering the public RPC with polling
-const POST_TX_WAIT_MS = 4000;
+const POST_TX_WAIT_MS = 3000;
 
 interface UseDonationReturn {
   state: DonationState;
@@ -72,8 +71,6 @@ export const useDonation = (): UseDonationReturn => {
         }
 
         // ── Step 3: Network check — use eth_chainId (local, no RPC call) ────
-        // provider.getNetwork() triggers an eth_chainId RPC call which
-        // counts toward the rate limit. MetaMask answers eth_chainId locally.
         const chainIdHex: string = await (window as any).ethereum.request({
           method: 'eth_chainId',
         });
@@ -91,35 +88,56 @@ export const useDonation = (): UseDonationReturn => {
         const signer = await provider.getSigner();
         const onChainCampaignId = campaign.campaignOnChainId ?? 0;
 
-        let txHash: string;
+        let txHash: string | undefined;
 
-        // ── Step 4: Send transaction — DO NOT call tx.wait() ──────────────
-        // tx.wait() polls the public Amoy RPC which rate-limits at -32002.
-        // Instead we grab the hash immediately and let the backend verify.
-        if (
-          CONTRACT_ADDRESS &&
-          CONTRACT_ADDRESS !== '' &&
-          CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000'
-        ) {
-          // ── Smart contract path ────────────────────────────────────────
-          const contract = new ethers.Contract(
-            CONTRACT_ADDRESS,
-            DONATION_CONTRACT_ABI,
-            signer
-          );
-          const valueWei = ethers.parseEther(amountEth);
-          const tx = await contract.donate(onChainCampaignId, { value: valueWei });
-          txHash = tx.hash;
-        } else {
-          // ── Fallback: direct transfer to recipient wallet ───────────────
-          const recipientWallet = campaign.recipientWallet;
-          if (!recipientWallet || recipientWallet === 'pending_wallet_verification') {
-            setStep('error', { error: 'Recipient wallet not verified. Donation cannot proceed.' });
-            return;
+        // ── Step 4: Send transaction with explicit gasLimit ───────────────
+        // By setting gasLimit explicitly (e.g. 100000n / 150000n), ethers.js v6
+        // skips calling provider.estimateGas() (eth_estimateGas RPC call).
+        // This prevents RPC rate limit / timeout errors!
+        try {
+          if (
+            CONTRACT_ADDRESS &&
+            CONTRACT_ADDRESS !== '' &&
+            CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000'
+          ) {
+            const contract = new ethers.Contract(
+              CONTRACT_ADDRESS,
+              DONATION_CONTRACT_ABI,
+              signer
+            );
+            const valueWei = ethers.parseEther(amountEth);
+            const tx = await contract.donate(onChainCampaignId, {
+              value: valueWei,
+              gasLimit: 150000n, // explicit gasLimit prevents eth_estimateGas RPC call
+            });
+            txHash = tx.hash;
+          } else {
+            const recipientWallet = campaign.recipientWallet;
+            if (!recipientWallet || recipientWallet === 'pending_wallet_verification') {
+              setStep('error', { error: 'Recipient wallet not verified. Donation cannot proceed.' });
+              return;
+            }
+            const valueWei = ethers.parseEther(amountEth);
+            const tx = await signer.sendTransaction({
+              to: recipientWallet,
+              value: valueWei,
+              gasLimit: 100000n, // explicit gasLimit prevents eth_estimateGas RPC call
+            });
+            txHash = tx.hash;
           }
-          const valueWei = ethers.parseEther(amountEth);
-          const tx = await signer.sendTransaction({ to: recipientWallet, value: valueWei });
-          txHash = tx.hash;
+        } catch (sendErr: any) {
+          // If transaction was broadcast but response errored out from RPC rate limit,
+          // check if transaction hash was captured on error object
+          const recoveredHash = sendErr?.transaction?.hash || sendErr?.hash || sendErr?.txHash;
+          if (recoveredHash) {
+            txHash = recoveredHash;
+          } else {
+            throw sendErr; // rethrow if truly failed before signing
+          }
+        }
+
+        if (!txHash) {
+          throw new Error('Transaction hash could not be retrieved from wallet provider.');
         }
 
         // ── Duplicate guard ────────────────────────────────────────────────
@@ -129,9 +147,7 @@ export const useDonation = (): UseDonationReturn => {
         }
         submittedHashes.current.add(txHash);
 
-        // ── Step 5: Show "mining" with hash — wait a few seconds ──────────
-        // We skip tx.wait() to avoid the rate-limited public Amoy RPC.
-        // A short delay lets the node propagate before the backend queries it.
+        // ── Step 5: Show "mining" with hash ────────────────────────────────
         setStep('mining', { txHash, error: null });
         await new Promise((resolve) => setTimeout(resolve, POST_TX_WAIT_MS));
 
@@ -145,7 +161,6 @@ export const useDonation = (): UseDonationReturn => {
             donorWallet: donorWallet.toLowerCase(),
             amount: amountEth,
           });
-          // Extract blockNumber from backend response if available
           const blockNum = (result as any)?.data?.blockNumber ?? null;
           setStep('success', {
             txHash,
@@ -155,8 +170,6 @@ export const useDonation = (): UseDonationReturn => {
             onChainVerified: true,
           });
         } catch (backendErr: any) {
-          // Backend failed (e.g. not yet mined) — still show success on frontend
-          // because the tx IS on-chain. Backend can re-verify via explorer.
           console.warn('[useDonation] Backend confirmation warning:', backendErr?.message);
           setStep('success', {
             txHash,
@@ -184,11 +197,8 @@ export const useDonation = (): UseDonationReturn => {
           err.message?.includes('rate limit') ||
           err.message?.includes('coalesce')
         ) {
-          // The public Amoy testnet RPC is rate-limited. This does NOT mean
-          // the tx failed — it means the network's public node is busy.
-          // The tx may have been submitted. Check PolygonScan to verify.
           userMessage =
-            'The Polygon Amoy public RPC is busy right now. If you confirmed in MetaMask, your transaction was submitted — check amoy.polygonscan.com with your wallet address to verify.';
+            'The public Polygon Amoy network node is experiencing high traffic. If you approved in MetaMask, your transaction was sent — check amoy.polygonscan.com with your wallet address.';
         } else if (err.code === 'NETWORK_ERROR') {
           userMessage = 'Network error. Please check your connection and try again.';
         } else if (err.code === 'CALL_EXCEPTION') {
