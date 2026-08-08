@@ -91,6 +91,26 @@ export const WalletActivityPage: React.FC = () => {
     setStartDate('');
     setEndDate('');
     setPage(1);
+
+    // Immediately trigger server fetch with cleared filter parameters
+    setIsLoading(true);
+    walletActivityAPI
+      .getActivity({ page: 1, limit: 10 })
+      .then((response) => {
+        const data = response.data || {};
+        setRecords(data.records || []);
+        setStatCards(data.statistics?.cards || []);
+        if (data.meta) {
+          setTotalPages(data.meta.totalPages || 1);
+          setTotalRecords(data.meta.totalRecords || 0);
+        }
+      })
+      .catch((err) => {
+        console.error('Error clearing filters:', err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   const getRoleHeaderInfo = () => {
@@ -272,6 +292,7 @@ export const WalletActivityPage: React.FC = () => {
           {/* Clear Filters Button */}
           <div className="col-6 col-md-2">
             <button
+              type="button"
               onClick={handleClearFilters}
               className="btn brutal-btn brutal-btn-yellow w-100 fw-bold"
             >
