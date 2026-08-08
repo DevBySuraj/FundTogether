@@ -126,24 +126,24 @@ NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 
 # MongoDB Atlas Cloud URI
-MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/fundtogether?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.example.mongodb.net/fundtogether?retryWrites=true&w=majority
 
 # JWT Authentication Secret
-JWT_SECRET=fundtogether_super_secret_jwt_key_2026
+JWT_SECRET=your_jwt_secret_key_here
 
 # Admin Credentials
 ADMIN_NAME=Platform Administrator
-ADMIN_EMAIL=admin@fundtogether.org
-ADMIN_PASSWORD=AdminSecurePass2026!
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_secure_admin_password_here
 
 # Google OAuth & Gemini AI API
-GOOGLE_CLIENT_ID=861225641819-fi6dg7ph6e93k0a1klbf1nu0adfdjkhl.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=your_google_client_id_here.apps.googleusercontent.com
 GEMINI_API_KEY=your_google_gemini_api_key_here
 
 # Optional Pinata IPFS Keys
-PINATA_API_KEY=your_pinata_api_key
-PINATA_SECRET_API_KEY=your_pinata_secret_key
-PINATA_JWT=your_pinata_jwt
+PINATA_API_KEY=your_pinata_api_key_here
+PINATA_SECRET_API_KEY=your_pinata_secret_key_here
+PINATA_JWT=your_pinata_jwt_here
 ```
 
 ---
@@ -153,7 +153,7 @@ Create a file named `.env` inside the `frontend/` directory:
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000
-VITE_GOOGLE_CLIENT_ID=861225641819-fi6dg7ph6e93k0a1klbf1nu0adfdjkhl.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=your_google_client_id_here.apps.googleusercontent.com
 ```
 
 ---
