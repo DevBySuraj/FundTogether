@@ -12,3 +12,4 @@
    - **Backend**: Bind HTTP server to `0.0.0.0` on `process.env.PORT || 5000`. Use wildcard / dynamic CORS (`cors({ origin: '*' })`) to allow local and cloud origins.
    - **Database**: Connect strictly to `process.env.MONGODB_URI` (MongoDB Atlas Cloud Cluster).
    - **Web3 / MetaMask**: Read chainId locally via `window.ethereum` and use resilient multi-RPC fallback arrays (Ankr, dRPC, Official) to eliminate rate limits in both local and production environments.
+   
