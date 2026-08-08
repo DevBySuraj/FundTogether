@@ -157,8 +157,8 @@ export class AdminService {
       throw new Error('Campaign not found');
     }
 
-    // Set campaign status to APPROVED so recipient sees "Approved by Admin" and can verify MetaMask
-    campaign.status = 'APPROVED';
+    // Set campaign status to ACTIVE so it immediately appears for donors
+    campaign.status = 'ACTIVE';
     await campaign.save();
 
     await Verification.updateMany(

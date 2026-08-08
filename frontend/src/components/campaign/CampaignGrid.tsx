@@ -38,7 +38,7 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
 
     try {
       if (isRecipientMode) {
-        // Recipient View: Call /campaign/my to retrieve recipient's campaigns
+        // Recipient View: Call /campaign/my to retrieve recipient's own created campaigns
         const response = await campaignAPI.getMy();
         let list = response.data || [];
         if (selectedCategory && selectedCategory !== 'All') {
@@ -46,8 +46,8 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
         }
         setCampaigns(list);
       } else {
-        // Donor View: Call /campaign/all to retrieve ALL campaigns across platform
-        const response = await campaignAPI.getAll(selectedCategory);
+        // Donor View: Call /campaign/verified to retrieve ONLY Admin-approved campaigns
+        const response = await campaignAPI.getVerified(selectedCategory);
         let list = response.data || [];
         if (selectedCategory && selectedCategory !== 'All') {
           list = list.filter((c) => c.category === selectedCategory);
@@ -67,8 +67,15 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
     }
   };
 
-  // Display all campaigns returned by server for the current view
-  const displayedCampaigns = campaigns;
+  // Filter campaigns:
+  // - Recipient View: Shows recipient's own campaigns (including PENDING_VERIFICATION)
+  // - Donor View: Donors ONLY see Admin-approved campaigns (ACTIVE, APPROVED, COMPLETED)
+  const displayedCampaigns = campaigns.filter((c) => {
+    if (isRecipientMode) {
+      return true;
+    }
+    return c.status === 'ACTIVE' || c.status === 'APPROVED' || c.status === 'COMPLETED';
+  });
 
   return (
     <section className="container py-5" id="campaignsSection">
@@ -84,7 +91,7 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
             ) : (
               <>
                 <i className="bi bi-heart-fill text-danger me-2"></i>
-                Active Fundraisers for Donors
+                Admin-Verified Campaigns for Donors
               </>
             )}{' '}
             <span className="badge brutal-badge badge-cyan fs-6 ms-2">
@@ -98,7 +105,7 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
                 : account
                   ? `Recipient Wallet: ${account.substring(0, 6)}...${account.substring(account.length - 4)}`
                   : 'Recipient Portal: Manage your created fundraisers'
-              : 'Donor View: All active medical fundraisers available for contribution.'}
+              : 'Donor View: Only campaigns manually reviewed & approved by Admin are listed.'}
           </small>
         </div>
 
@@ -129,16 +136,18 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
         <div className="brutal-card max-w-500 mx-auto p-4 text-center">
           <i className="bi bi-shield-check text-secondary fs-1 mb-2"></i>
           <h4 className="fw-bold mb-2">
-            {isRecipientMode ? 'No Created Campaigns Found' : 'No Active Campaigns Available'}
+            {isRecipientMode ? 'No Created Campaigns Found' : 'No Admin-Approved Campaigns Currently Active'}
           </h4>
           <p className="text-secondary mb-3">
             {isRecipientMode
               ? 'You have not created any medical fundraisers with your account yet.'
-              : 'No campaigns match the selected category. Create a new campaign to test!'}
+              : 'New campaigns will appear here once they are manually reviewed and approved by the Platform Administrator.'}
           </p>
-          <button onClick={onOpenCreateModal} className="btn brutal-btn brutal-btn-lime fw-bold">
-            <i className="bi bi-plus-circle-fill me-1"></i> Start a Campaign Now
-          </button>
+          {isRecipientMode && (
+            <button onClick={onOpenCreateModal} className="btn brutal-btn brutal-btn-lime fw-bold">
+              <i className="bi bi-plus-circle-fill me-1"></i> Start Your First Campaign
+            </button>
+          )}
         </div>
       ) : (
         <div className="row">

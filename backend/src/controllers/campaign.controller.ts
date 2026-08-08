@@ -7,7 +7,7 @@ import { AuthenticatedRequest } from '../types';
 export class CampaignController {
   /**
    * Recipient endpoint: GET /campaign/my
-   * Returns only campaigns belonging to the authenticated recipient
+   * Returns all campaigns belonging to the authenticated recipient (including PENDING_VERIFICATION, APPROVED, ACTIVE, DRAFT)
    */
   public getMyCampaigns = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
     try {
@@ -42,30 +42,26 @@ export class CampaignController {
 
   /**
    * Donor endpoint: GET /campaign/verified
-   * Returns all campaigns for donors so every campaign is visible
+   * Returns ONLY campaigns that have been manually reviewed and approved by Admin (ACTIVE, APPROVED, COMPLETED)
+   * Unverified campaigns (PENDING_VERIFICATION, DRAFT, REJECTED) are HIDDEN from Donors.
    */
   public getVerifiedCampaigns = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
     try {
-      let campaigns = await Campaign.find({
-        status: { $in: ['ACTIVE', 'APPROVED', 'COMPLETED', 'PENDING_VERIFICATION', 'DRAFT'] },
+      const campaigns = await Campaign.find({
+        status: { $in: ['ACTIVE', 'APPROVED', 'COMPLETED'] },
       })
         .populate('verificationId')
         .sort({ createdAt: -1 });
 
-      if (campaigns.length === 0) {
-        campaigns = await Campaign.find({})
-          .populate('verificationId')
-          .sort({ createdAt: -1 });
-      }
-
-      return sendSuccess(res, campaigns, 'Campaigns retrieved successfully for donor view', 200);
+      return sendSuccess(res, campaigns, 'Admin-approved verified campaigns retrieved for donor view', 200);
     } catch (error: any) {
-      return sendError(res, error.message || 'Failed to fetch campaigns', 500);
+      return sendError(res, error.message || 'Failed to fetch verified campaigns', 500);
     }
   };
 
   /**
    * Recipient endpoint: POST /campaign/create
+   * Recipient uploads a campaign -> Starts in PENDING_VERIFICATION state until Admin approves it.
    */
   public createCampaign = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
     try {
@@ -84,7 +80,7 @@ export class CampaignController {
         targetAmount: parseFloat(targetAmount),
         category: category || 'General',
         recipientWallet: walletDestination.toLowerCase(),
-        status: 'ACTIVE', // Automatically mark new campaigns as ACTIVE for instant donor visibility
+        status: 'PENDING_VERIFICATION', // STRICT GUARD: Requires Admin approval before becoming visible to donors
       };
 
       if (userId && Types.ObjectId.isValid(userId)) {
@@ -93,7 +89,12 @@ export class CampaignController {
 
       const campaign = await Campaign.create(campaignData);
 
-      return sendSuccess(res, campaign, 'Campaign created and activated successfully.', 201);
+      return sendSuccess(
+        res,
+        campaign,
+        'Campaign submitted successfully. It is now under Admin review and will become visible to donors upon Admin approval.',
+        201
+      );
     } catch (error: any) {
       return sendError(res, error.message || 'Failed to create campaign', 500);
     }
@@ -101,7 +102,7 @@ export class CampaignController {
 
   /**
    * Public & Donor endpoint: GET /campaign/all
-   * Returns all campaigns for donors and public visitors
+   * Donors & public visitors ONLY see Admin-approved campaigns (ACTIVE, APPROVED, COMPLETED)
    */
   public getAllCampaigns = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -109,7 +110,13 @@ export class CampaignController {
       const queryFilter: any = {};
 
       if (category && category !== 'All') queryFilter.category = category;
-      if (status && status !== 'All') queryFilter.status = status;
+
+      // Donors see ONLY Admin-approved campaigns unless a specific Admin filter is provided
+      if (status && status !== 'All') {
+        queryFilter.status = status;
+      } else {
+        queryFilter.status = { $in: ['ACTIVE', 'APPROVED', 'COMPLETED'] };
+      }
 
       const campaigns = await Campaign.find(queryFilter)
         .populate('verificationId')
@@ -142,7 +149,10 @@ export class CampaignController {
       const summary = verification.summary || 'Hospital admission and bill estimate statement verified with high confidence.';
       const recommendation = verification.recommendation || 'APPROVE_CAMPAIGN';
 
-      const trustScore = campaign.status === 'ACTIVE' || campaign.status === 'COMPLETED' ? Math.max(90, Math.min(100, Math.round(confidence))) : 85;
+      const trustScore = campaign.status === 'ACTIVE' || campaign.status === 'APPROVED' || campaign.status === 'COMPLETED'
+        ? Math.max(90, Math.min(100, Math.round(confidence)))
+        : 75;
+
       const ipfsCid = campaign.ipfsCid || 'QmdemoIpfsCid123';
       const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsCid}`;
       const documentHash = campaign.documentHash || 'a3f5b7c89d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a';
@@ -150,7 +160,12 @@ export class CampaignController {
       const trustReport = {
         campaignId: campaign._id,
         trustScore,
-        verificationStatus: campaign.status === 'ACTIVE' ? 'VERIFIED & ACTIVE ON-CHAIN' : campaign.status === 'COMPLETED' ? 'VERIFIED & COMPLETED' : 'AI VERIFIED',
+        verificationStatus:
+          campaign.status === 'ACTIVE' || campaign.status === 'APPROVED'
+            ? 'VERIFIED & ACTIVE ON-CHAIN'
+            : campaign.status === 'COMPLETED'
+              ? 'VERIFIED & COMPLETED'
+              : 'PENDING ADMIN APPROVAL',
         documentHash,
         ipfsCid,
         ipfsUrl,
