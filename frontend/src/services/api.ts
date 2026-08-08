@@ -1,7 +1,10 @@
 import axios from 'axios';
 import type { Campaign, TrustReport, VerificationRecord } from '../types';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Determine base URL: use env variable in production, fallback to localhost for dev
+const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000';
+// Normalize: strip trailing slash, ensure /api suffix
+const API_BASE_URL = rawBase.replace(/\/+$/, '').replace(/\/api$/, '') + '/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -17,6 +20,20 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      const path = window.location.pathname;
+      if (!path.startsWith('/admin')) {
+        localStorage.removeItem('trustchain_token');
+        localStorage.removeItem('trustchain_user');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const authAPI = {
   googleLogin: async (credentialToken: string, role: 'recipient' | 'donor') => {

@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-let rawBaseUrl = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000/api';
-if (!rawBaseUrl.endsWith('/api') && !rawBaseUrl.endsWith('/api/')) {
-  rawBaseUrl = rawBaseUrl.replace(/\/$/, '') + '/api';
-}
+const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000';
+const rawBaseUrl = rawBase.replace(/\/+$/, '').replace(/\/api$/, '') + '/api';
 
 const adminAxios = axios.create({
   baseURL: rawBaseUrl,
