@@ -60,14 +60,15 @@ export const useDonation = (): UseDonationReturn => {
           return;
         }
 
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-
         // ── Step 2: Request accounts ───────────────────────────────────────
-        const accounts = await provider.send('eth_requestAccounts', []);
+        const accounts: string[] = await (window as any).ethereum.request({
+          method: 'eth_requestAccounts',
+        });
         if (!accounts || accounts.length === 0) {
           setStep('error', { error: 'No MetaMask account authorized. Please unlock your wallet.' });
           return;
         }
+        const activeWallet = accounts[0].toLowerCase();
 
         // ── Step 3: Network check — use eth_chainId ────────────────────────
         const chainIdHex: string = await (window as any).ethereum.request({
@@ -83,8 +84,6 @@ export const useDonation = (): UseDonationReturn => {
         }
 
         setStep('confirming', { error: null });
-
-        const signer = await provider.getSigner();
         const onChainCampaignId = campaign.campaignOnChainId ?? 0;
 
         let txHash: string | undefined;
@@ -96,6 +95,9 @@ export const useDonation = (): UseDonationReturn => {
             CONTRACT_ADDRESS !== '' &&
             CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000'
           ) {
+            // Smart contract execution path
+            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const signer = await provider.getSigner();
             const contract = new ethers.Contract(
               CONTRACT_ADDRESS,
               DONATION_CONTRACT_ABI,
@@ -108,6 +110,8 @@ export const useDonation = (): UseDonationReturn => {
             });
             txHash = tx.hash;
           } else {
+            // Native direct transfer via eth_sendTransaction
+            // Eliminates ethers.js RPC fee fetching and 'could not coalesce error' completely!
             const recipientWallet = campaign.recipientWallet;
             if (
               !recipientWallet ||
@@ -119,13 +123,20 @@ export const useDonation = (): UseDonationReturn => {
               });
               return;
             }
+
             const valueWei = ethers.parseEther(amountEth);
-            const tx = await signer.sendTransaction({
-              to: recipientWallet,
-              value: valueWei,
-              gasLimit: 100000n,
+            const valueHex = '0x' + valueWei.toString(16);
+
+            txHash = await (window as any).ethereum.request({
+              method: 'eth_sendTransaction',
+              params: [
+                {
+                  from: activeWallet,
+                  to: recipientWallet.toLowerCase(),
+                  value: valueHex,
+                },
+              ],
             });
-            txHash = tx.hash;
           }
         } catch (sendErr: any) {
           console.warn('[useDonation] Send transaction exception:', sendErr);
@@ -160,7 +171,7 @@ export const useDonation = (): UseDonationReturn => {
           const result = await donationAPI.confirmDonation({
             campaignId: campaign._id,
             transactionHash: txHash,
-            donorWallet: donorWallet.toLowerCase(),
+            donorWallet: activeWallet,
             amount: amountEth,
           });
           blockNum = (result as any)?.data?.blockNumber ?? null;
@@ -187,7 +198,7 @@ export const useDonation = (): UseDonationReturn => {
 
         let userMessage = err?.shortMessage || err?.reason || err?.message || 'An unexpected error occurred during the donation.';
 
-        if (err?.code === 4001 || err?.code === 'ACTION_REJECTED' || err?.message?.includes('rejected')) {
+        if (err?.code === 4001 || err?.code === 'ACTION_REJECTED' || err?.message?.includes('rejected') || err?.message?.includes('User denied')) {
           userMessage = 'Transaction rejected. You cancelled the MetaMask prompt.';
         } else if (
           err?.code === 'INSUFFICIENT_FUNDS' ||
@@ -195,10 +206,14 @@ export const useDonation = (): UseDonationReturn => {
           err?.message?.includes('exceeds balance')
         ) {
           userMessage = 'Insufficient balance in your wallet for this donation. Get free POL testnet tokens at faucet.polygon.technology.';
+        } else if (
+          err?.message?.includes('coalesce') ||
+          err?.code === -32002 ||
+          err?.message?.includes('too many errors')
+        ) {
+          userMessage = 'MetaMask RPC provider returned an ambiguous status. If you confirmed the prompt in MetaMask, check amoy.polygonscan.com for your wallet address.';
         } else if (err?.code === 'NETWORK_ERROR') {
           userMessage = 'Network error. Please check your internet connection and try again.';
-        } else if (err?.code === 'CALL_EXCEPTION') {
-          userMessage = 'Smart contract execution failed. The transaction was reverted.';
         }
 
         setStep('error', { error: userMessage });
