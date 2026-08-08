@@ -55,7 +55,7 @@ export class AuthController {
   };
 
   /**
-   * Legacy / Web3 Nonce endpoint for wallet sign-in
+   * Web3 Nonce endpoint for wallet sign-in
    */
   public connectWallet = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -71,32 +71,49 @@ export class AuthController {
   };
 
   /**
-   * Legacy / Web3 Verify signature endpoint
+   * Web3 Verify signature endpoint (Direct MetaMask Login)
    */
   public verifySignature = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { walletAddress, role } = req.body;
+      if (!walletAddress) {
+        return sendError(res, 'Wallet address is required', 400);
+      }
+
+      const cleanWallet = walletAddress.toLowerCase().trim();
       const targetRole = role || 'donor';
-      let user = await User.findOne({ walletAddress: walletAddress.toLowerCase() });
+
+      let user = await User.findOne({ walletAddress: cleanWallet });
       if (!user) {
         user = await User.create({
-          walletAddress: walletAddress.toLowerCase(),
+          walletAddress: cleanWallet,
           role: targetRole,
+          walletVerified: true,
+          isVerified: true,
+          walletVerifiedAt: new Date(),
         });
+      } else {
+        user.walletVerified = true;
+        user.isVerified = true;
+        user.walletVerifiedAt = new Date();
+        await user.save();
       }
+
       const token = generateJwt({
         id: user._id.toString(),
         email: user.email,
         role: user.role,
+        walletAddress: cleanWallet,
       });
-      return sendSuccess(res, { token, user }, 'Signature verified', 200);
+
+      return sendSuccess(res, { token, user }, 'MetaMask wallet login & verification successful', 200);
     } catch (err: any) {
       return sendError(res, err.message, 500);
     }
   };
 
   /**
-   * Password register endpoint
+   * Register endpoint
    */
   public register = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -122,7 +139,7 @@ export class AuthController {
   };
 
   /**
-   * Password login endpoint
+   * Login endpoint
    */
   public login = async (req: Request, res: Response): Promise<Response> => {
     try {
