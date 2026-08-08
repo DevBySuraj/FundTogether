@@ -132,9 +132,9 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
 
                 <AiReportCard result={aiResult} />
 
-                <div className="alert alert-info fw-bold small mt-3">
-                  <i className="bi bi-info-circle-fill me-2"></i>
-                  Next Step: After Admin approval, you will connect &amp; verify your MetaMask wallet to activate the campaign for donations.
+                <div className="alert alert-warning border border-2 border-dark fw-bold small mt-3">
+                  <i className="bi bi-hourglass-split me-2 text-dark fs-5"></i>
+                  Status: <strong>Submitted for Admin Review</strong>. Your campaign is saved in MongoDB Atlas and pending Admin approval before appearing to donors.
                 </div>
 
                 <button
@@ -174,21 +174,21 @@ export const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({
                   />
                 </div>
 
-                {/* Target Amount (₹ INR) & Category */}
+                {/* Target Amount (POL) & Category */}
                 <div className="row mb-3">
                   <div className="col-md-6">
                     <label className="form-label fw-bold">
-                      Target Goal Amount (₹ INR) <span className="text-danger">*</span>
+                      Target Goal Amount (POL Cryptocurrency) <span className="text-danger">*</span>
                     </label>
                     <div className="input-group">
-                      <span className="input-group-text fw-bold bg-dark text-white">₹</span>
+                      <span className="input-group-text fw-bold bg-dark text-white">POL</span>
                       <input
                         type="number"
-                        step="500"
-                        min="500"
-                        className="form-control"
+                        step="0.01"
+                        min="0.01"
+                        className="form-control fw-bold"
                         required
-                        placeholder="e.g. 150000"
+                        placeholder="e.g. 1.5"
                         value={targetAmount}
                         onChange={(e) => setTargetAmount(e.target.value)}
                       />
