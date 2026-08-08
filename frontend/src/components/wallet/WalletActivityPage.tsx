@@ -525,9 +525,15 @@ export const WalletActivityPage: React.FC = () => {
                     </div>
 
                     {/* Modal Actions */}
-                    <div className="d-flex justify-content-end gap-2">
+                    <div className="d-flex justify-content-end gap-2 flex-wrap">
                       <button className="btn brutal-btn" onClick={() => setSelectedTxHash(null)}>
                         Close
+                      </button>
+                      <button
+                        className="btn brutal-btn brutal-btn-yellow fw-bold"
+                        onClick={() => window.print()}
+                      >
+                        <i className="bi bi-printer me-1"></i> Print Audit Report
                       </button>
                       <a
                         href={txDetails.explorerUrl}
