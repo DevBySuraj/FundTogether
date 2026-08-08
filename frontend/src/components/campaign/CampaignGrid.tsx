@@ -27,7 +27,6 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
   const [verifyingCampaignId, setVerifyingCampaignId] = useState<string | null>(null);
 
   const isRecipientMode = user?.role === 'recipient' || user?.role === 'user';
-  const isDonorMode = user?.role === 'donor';
 
   useEffect(() => {
     fetchCampaigns();
@@ -39,7 +38,7 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
 
     try {
       if (isRecipientMode) {
-        // Recipient View: Call /campaign/my to retrieve recipient's campaigns (including DRAFT / PENDING_VERIFICATION / APPROVED)
+        // Recipient View: Call /campaign/my to retrieve recipient's campaigns
         const response = await campaignAPI.getMy();
         let list = response.data || [];
         if (selectedCategory && selectedCategory !== 'All') {
@@ -47,8 +46,8 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
         }
         setCampaigns(list);
       } else {
-        // Donor View: Call /campaign/verified to retrieve ONLY campaigns manually verified & approved by Admin
-        const response = await campaignAPI.getVerified();
+        // Donor View: Call /campaign/all to retrieve ALL campaigns across platform
+        const response = await campaignAPI.getAll(selectedCategory);
         let list = response.data || [];
         if (selectedCategory && selectedCategory !== 'All') {
           list = list.filter((c) => c.category === selectedCategory);
@@ -57,9 +56,8 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
       }
     } catch (err: any) {
       console.error('Failed to fetch campaigns:', err);
-      // Fallback call
       try {
-        const fallbackRes = await campaignAPI.getAll(selectedCategory);
+        const fallbackRes = await campaignAPI.getVerified();
         setCampaigns(fallbackRes.data || []);
       } catch {
         setError('Unable to load campaigns from TrustChain server.');
@@ -69,16 +67,8 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
     }
   };
 
-  // Filter campaigns strictly by role:
-  // Recipient: Display ALL campaigns returned by /campaign/my (they belong to current recipient)
-  // Donor: Only campaigns manually approved by Admin (ACTIVE or COMPLETED)
-  const displayedCampaigns = campaigns.filter((c) => {
-    if (isRecipientMode) {
-      return true; // All campaigns from /campaign/my belong to recipient
-    }
-    // Donors see ONLY active or completed campaigns approved by Admin
-    return c.status === 'ACTIVE' || c.status === 'COMPLETED';
-  });
+  // Display all campaigns returned by server for the current view
+  const displayedCampaigns = campaigns;
 
   return (
     <section className="container py-5" id="campaignsSection">
@@ -91,13 +81,11 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
                 <i className="bi bi-person-workspace text-success me-2"></i>
                 Recipient Portal: My Created Fundraisers
               </>
-            ) : isDonorMode ? (
+            ) : (
               <>
                 <i className="bi bi-heart-fill text-danger me-2"></i>
-                Donor Portal: Verified Campaigns
+                Active Fundraisers for Donors
               </>
-            ) : (
-              'Verified Medical Campaigns'
             )}{' '}
             <span className="badge brutal-badge badge-cyan fs-6 ms-2">
               {displayedCampaigns.length}
@@ -110,7 +98,7 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
                 : account
                   ? `Recipient Wallet: ${account.substring(0, 6)}...${account.substring(account.length - 4)}`
                   : 'Recipient Portal: Manage your created fundraisers'
-              : 'Donor Portal: Only campaigns manually verified & approved by Admin are listed.'}
+              : 'Donor View: All active medical fundraisers available for contribution.'}
           </small>
         </div>
 
@@ -141,18 +129,16 @@ export const CampaignGrid: React.FC<CampaignGridProps> = ({
         <div className="brutal-card max-w-500 mx-auto p-4 text-center">
           <i className="bi bi-shield-check text-secondary fs-1 mb-2"></i>
           <h4 className="fw-bold mb-2">
-            {isRecipientMode ? 'No Created Campaigns Found' : 'No Verified Campaigns Currently Active'}
+            {isRecipientMode ? 'No Created Campaigns Found' : 'No Active Campaigns Available'}
           </h4>
           <p className="text-secondary mb-3">
             {isRecipientMode
               ? 'You have not created any medical fundraisers with your account yet.'
-              : 'Campaigns will appear here once they are manually reviewed, AI-verified, and approved by the Platform Administrator.'}
+              : 'No campaigns match the selected category. Create a new campaign to test!'}
           </p>
-          {isRecipientMode && (
-            <button onClick={onOpenCreateModal} className="btn brutal-btn brutal-btn-lime fw-bold">
-              <i className="bi bi-plus-circle-fill me-1"></i> Start Your First Campaign
-            </button>
-          )}
+          <button onClick={onOpenCreateModal} className="btn brutal-btn brutal-btn-lime fw-bold">
+            <i className="bi bi-plus-circle-fill me-1"></i> Start a Campaign Now
+          </button>
         </div>
       ) : (
         <div className="row">

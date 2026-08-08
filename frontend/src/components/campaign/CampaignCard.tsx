@@ -128,24 +128,14 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
               <i className="bi bi-shield-check text-primary"></i> Trust Report
             </button>
 
-            {/* Donate Button: Prominently displayed for ACTIVE campaigns in Donor View */}
-            {!isRecipientMode && campaign.status === 'ACTIVE' && (
+            {/* Donate Button: Prominently displayed for all campaigns in Donor View */}
+            {!isRecipientMode && (
               <button
                 onClick={() => onDonateClick(campaign)}
                 className="btn brutal-btn brutal-btn-lime fw-black"
                 id={`donate-btn-${campaign._id}`}
               >
                 <span className="me-1">🦊</span> Donate with MetaMask
-              </button>
-            )}
-
-            {!isRecipientMode && campaign.status !== 'ACTIVE' && (
-              <button
-                disabled
-                className="btn brutal-btn btn-secondary text-muted"
-                style={{ opacity: 0.6 }}
-              >
-                🔒 Campaign Not Active
               </button>
             )}
           </div>
