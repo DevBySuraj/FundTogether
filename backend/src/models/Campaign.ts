@@ -35,7 +35,7 @@ const CampaignSchema = new Schema<ICampaign>(
     },
     recipientWallet: {
       type: String,
-      required: true,
+      default: 'pending_wallet_verification',
       lowercase: true,
       trim: true,
       index: true,
