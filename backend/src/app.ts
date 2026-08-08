@@ -1,11 +1,13 @@
-import express, { Application, Request, Response } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
+import mongoose from 'mongoose';
 import routes from './routes';
 import { errorHandler } from './middleware/error';
 import { swaggerSpec } from './swagger/swagger';
+import { connectDB } from './config/db';
 
 const app: Application = express();
 
@@ -24,8 +26,21 @@ app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'UP',
     service: 'TrustChain Backend API',
+    dbState: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Database Connection Assurance Middleware for Serverless & Cloud Hosts
+app.use(async (_req: Request, _res: Response, next: NextFunction) => {
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (err: any) {
+      console.error('[Database Assurance Middleware Error]:', err.message);
+    }
+  }
+  next();
 });
 
 // Primary API Router (Mount on both '/' and '/api' for complete compatibility)

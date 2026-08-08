@@ -24,16 +24,21 @@ const syncCollectionIndexes = async () => {
 };
 
 export const connectDB = async (): Promise<typeof mongoose | null> => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
+  }
+
   const primaryUri = env.mongoUri || 'mongodb://127.0.0.1:27017/fundtogether';
   const localFallbackUri = 'mongodb://127.0.0.1:27017/fundtogether';
-
   const isAtlas = primaryUri.includes('mongodb+srv') || primaryUri.includes('mongodb.net');
+  const isProd = env.nodeEnv === 'production' || process.env.NODE_ENV === 'production';
 
   logger.info(`[MongoDB] Connecting to ${isAtlas ? 'MongoDB Atlas Cloud Database' : 'Database'}...`);
 
   try {
     const conn = await mongoose.connect(primaryUri, {
       autoIndex: true,
+      serverSelectionTimeoutMS: 5000,
     });
 
     logger.info(`[MongoDB] Connected successfully to host: ${conn.connection.host}`);
@@ -47,7 +52,10 @@ export const connectDB = async (): Promise<typeof mongoose | null> => {
       try {
         logger.info('[MongoDB] Retrying SRV DNS lookup via Google DNS (8.8.8.8)...');
         dns.setServers(['8.8.8.8', '1.1.1.1']);
-        const conn = await mongoose.connect(primaryUri, { autoIndex: true });
+        const conn = await mongoose.connect(primaryUri, {
+          autoIndex: true,
+          serverSelectionTimeoutMS: 5000,
+        });
         logger.info(`[MongoDB] Connected successfully via Google DNS to host: ${conn.connection.host}`);
         await syncCollectionIndexes();
         return conn;
@@ -56,12 +64,13 @@ export const connectDB = async (): Promise<typeof mongoose | null> => {
       }
     }
 
-    // Fallback to local MongoDB if Atlas cloud is completely unreachable
-    if (isAtlas) {
+    // Only fallback to local MongoDB if NOT in production cloud environment
+    if (isAtlas && !isProd) {
       try {
         logger.info('[MongoDB Fallback] Connecting to local MongoDB instance (mongodb://127.0.0.1:27017/fundtogether)...');
         const conn = await mongoose.connect(localFallbackUri, {
           autoIndex: true,
+          serverSelectionTimeoutMS: 3000,
         });
         logger.info(`[MongoDB Fallback] Connected successfully to local host: ${conn.connection.host}`);
         await syncCollectionIndexes();
