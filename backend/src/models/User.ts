@@ -25,7 +25,7 @@ const UserSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ['recipient', 'user', 'donor', 'admin'],
+      enum: ['recipient', 'user', 'donor', 'admin', 'authority', 'hospital', 'investigator', 'reviewer'],
       default: 'donor',
       required: true,
     },
