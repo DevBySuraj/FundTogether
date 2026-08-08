@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminService } from '../services/adminService';
+import { campaignAPI } from '../../services/api';
 import { Search, Filter, Eye, CheckCircle, XCircle, RotateCcw, AlertTriangle } from 'lucide-react';
 
 export const AdminPendingPage: React.FC = () => {
@@ -31,11 +32,33 @@ export const AdminPendingPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await adminService.getPending(statusFilter, riskFilter);
-      const rawList = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : [];
+      let rawList = Array.isArray(res)
+        ? res
+        : Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
+
+      // If list is empty, fallback to fetching all campaigns directly
+      if (rawList.length === 0) {
+        try {
+          const allRes = await campaignAPI.getAll('All');
+          rawList = allRes.data || [];
+        } catch {
+          // ignore
+        }
+      }
+
       setList(rawList);
     } catch (err) {
       console.error('Failed to fetch pending campaigns:', err);
-      setList([]);
+      try {
+        const allRes = await campaignAPI.getAll('All');
+        setList(allRes.data || []);
+      } catch {
+        setList([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -91,52 +114,84 @@ export const AdminPendingPage: React.FC = () => {
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
   const paginatedList = filteredList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  const formatInr = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  };
+
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-6 right-6 z-50 bg-slate-900 text-emerald-400 border border-emerald-500/50 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-sm font-semibold animate-bounce">
-          <CheckCircle className="w-5 h-5 text-emerald-400" />
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 9999,
+            background: '#0f172a',
+            color: '#34d399',
+            border: '1px solid rgba(52, 211, 153, 0.4)',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontWeight: 'bold',
+            fontSize: '0.9rem',
+          }}
+        >
+          <CheckCircle size={18} />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800">
+      <div
+        className="admin-card"
+        style={{
+          padding: '1.5rem 2rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1rem',
+        }}
+      >
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span>Pending Verifications Audit</span>
-            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold px-2.5 py-1 rounded-full">
-              {filteredList.length} Items
-            </span>
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
+            <span className="admin-badge admin-badge-warning">{filteredList.length} Items</span>
+          </h2>
+          <p className="admin-subtext" style={{ marginTop: '4px' }}>
             Audit Gemini AI document OCR confidence, verify medical invoices, and approve on-chain campaigns.
           </p>
         </div>
       </div>
 
       {/* Filter Controls */}
-      <div className="grid grid-[#0f172a] md:grid-cols-4 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
         {/* Search */}
-        <div className="relative md:col-span-2">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        <div style={{ position: 'relative' }}>
+          <Search size={16} className="admin-search-icon" />
           <input
             type="text"
             placeholder="Search by title, category, or wallet..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 text-white placeholder-slate-500 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
+            className="admin-input"
+            style={{ width: '100%', paddingLeft: '38px' }}
           />
         </div>
 
         {/* Status Filter */}
-        <div className="relative">
-          <Filter className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        <div style={{ position: 'relative' }}>
+          <Filter size={16} className="admin-search-icon" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 text-slate-300 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 appearance-none"
+            className="admin-input"
+            style={{ width: '100%', paddingLeft: '38px' }}
           >
             <option value="ALL">All Statuses</option>
             <option value="DRAFT">DRAFT</option>
@@ -147,12 +202,13 @@ export const AdminPendingPage: React.FC = () => {
         </div>
 
         {/* Risk Filter */}
-        <div className="relative">
-          <AlertTriangle className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        <div style={{ position: 'relative' }}>
+          <AlertTriangle size={16} className="admin-search-icon" />
           <select
             value={riskFilter}
             onChange={(e) => setRiskFilter(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 text-slate-300 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 appearance-none"
+            className="admin-input"
+            style={{ width: '100%', paddingLeft: '38px' }}
           >
             <option value="ALL">All Risk Levels</option>
             <option value="Low">Low Risk (&gt;90% Confidence)</option>
@@ -164,18 +220,18 @@ export const AdminPendingPage: React.FC = () => {
 
       {/* Main List Grid */}
       {isLoading ? (
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-slate-400 font-medium">Fetching verification records from TrustChain backend...</p>
+        <div className="admin-card" style={{ padding: '4rem', textAlign: 'center' }}>
+          <div className="spinner-border text-light mb-3" role="status"></div>
+          <p className="fw-bold text-light">Fetching verification records from TrustChain backend...</p>
         </div>
       ) : filteredList.length === 0 ? (
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 text-center">
-          <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
-          <h3 className="text-lg font-bold text-white mb-1">No Pending Verifications Match Filters</h3>
-          <p className="text-slate-400 text-sm">All campaigns have been processed or no submissions fit the selected criteria.</p>
+        <div className="admin-card" style={{ padding: '4rem', textAlign: 'center' }}>
+          <CheckCircle size={48} style={{ color: '#10b981', margin: '0 auto 1rem d-block', opacity: 0.8 }} />
+          <h3 style={{ color: '#fff', fontWeight: 800, marginBottom: '0.5rem' }}>No Pending Verifications Match Filters</h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>All campaigns have been processed or no submissions fit the selected criteria.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {paginatedList.map((item) => {
             const campaignId = item.campaignId?._id || item.campaignId || item._id;
             const title = item.title || item.campaignId?.title || 'Medical Fundraiser Audit';
@@ -187,101 +243,69 @@ export const AdminPendingPage: React.FC = () => {
             const status = item.status || item.campaignId?.status || 'PENDING_VERIFICATION';
 
             return (
-              <div
-                key={item._id}
-                className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-slate-700 transition-all rounded-2xl p-6 flex flex-col justify-between shadow-xl"
-              >
+              <div key={item._id} className="admin-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   {/* Top Badges */}
-                  <div className="flex items-center justify-between gap-2 mb-4">
-                    <span className="text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-lg">
-                      {category}
-                    </span>
-
-                    <span
-                      className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
-                        risk === 'Low'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : risk === 'Medium'
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                      }`}
-                    >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <span className="admin-badge admin-badge-info">{category}</span>
+                    <span className={`admin-badge ${risk === 'Low' ? 'admin-badge-success' : risk === 'Medium' ? 'admin-badge-warning' : 'admin-badge-danger'}`}>
                       {risk} Risk ({confidence}%)
                     </span>
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">{title}</h3>
+                  <h4 style={{ color: '#fff', fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {title}
+                  </h4>
 
                   {/* Summary / Description */}
-                  <p className="text-slate-400 text-xs line-clamp-3 mb-4 leading-relaxed">{summary}</p>
+                  <p style={{ color: '#94a3b8', fontSize: '0.82rem', lineHeight: 1.5, marginBottom: '1rem', height: '3.6em', overflow: 'hidden' }}>
+                    {summary}
+                  </p>
 
                   {/* Target Amount */}
-                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 mb-4">
-                    <div className="text-slate-500 text-[11px] font-semibold tracking-wider uppercase">Target Goal</div>
-                    <div className="text-white font-extrabold text-base">₹ {targetAmount.toLocaleString('en-IN')} INR</div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '1rem' }}>
+                    <span className="admin-subtext">TARGET GOAL</span>
+                    <strong style={{ color: '#fff', fontSize: '1.1rem' }}>{formatInr(targetAmount)}</strong>
                   </div>
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="space-y-2 pt-2 border-t border-slate-800">
-                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#94a3b8' }}>
                     <span>Status:</span>
-                    <span className="font-bold text-white">{status}</span>
+                    <strong style={{ color: '#fff' }}>{status}</strong>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link
-                      to={`/admin/campaign/${campaignId}`}
-                      className="inline-flex items-center justify-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 px-3 rounded-xl transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Inspect OCR</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <Link to={`/admin/campaign/${campaignId}`} className="admin-btn admin-btn-secondary" style={{ justifyContent: 'center', padding: '0.45rem 0.75rem' }}>
+                      <Eye size={14} /> Inspect
                     </Link>
 
                     <button
-                      onClick={() =>
-                        setModalAction({
-                          type: 'approve',
-                          campaignId,
-                          title,
-                        })
-                      }
-                      className="inline-flex items-center justify-center space-x-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20"
+                      onClick={() => setModalAction({ type: 'approve', campaignId, title })}
+                      className="admin-btn admin-btn-success"
+                      style={{ justifyContent: 'center', padding: '0.45rem 0.75rem' }}
                     >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      <span>Approve</span>
+                      <CheckCircle size={14} /> Approve
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     <button
-                      onClick={() =>
-                        setModalAction({
-                          type: 'reupload',
-                          campaignId,
-                          title,
-                        })
-                      }
-                      className="inline-flex items-center justify-center space-x-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 text-xs font-bold py-2 px-3 rounded-xl transition-colors"
+                      onClick={() => setModalAction({ type: 'reupload', campaignId, title })}
+                      className="admin-btn admin-btn-warning"
+                      style={{ justifyContent: 'center', padding: '0.45rem 0.75rem' }}
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Re-upload</span>
+                      <RotateCcw size={14} /> Re-upload
                     </button>
 
                     <button
-                      onClick={() =>
-                        setModalAction({
-                          type: 'reject',
-                          campaignId,
-                          title,
-                        })
-                      }
-                      className="inline-flex items-center justify-center space-x-1 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 text-xs font-bold py-2 px-3 rounded-xl transition-colors"
+                      onClick={() => setModalAction({ type: 'reject', campaignId, title })}
+                      className="admin-btn admin-btn-danger"
+                      style={{ justifyContent: 'center', padding: '0.45rem 0.75rem' }}
                     >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Reject</span>
+                      <XCircle size={14} /> Reject
                     </button>
                   </div>
                 </div>
@@ -293,21 +317,23 @@ export const AdminPendingPage: React.FC = () => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 pt-4">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', paddingTop: '1rem' }}>
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 disabled:opacity-40"
+            className="admin-btn admin-btn-secondary"
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
           >
             Prev
           </button>
-          <span className="text-xs text-slate-400 font-semibold px-2">
+          <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600, padding: '0 0.5rem' }}>
             Page {currentPage} of {totalPages}
           </span>
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 disabled:opacity-40"
+            className="admin-btn admin-btn-secondary"
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
           >
             Next
           </button>
@@ -316,17 +342,17 @@ export const AdminPendingPage: React.FC = () => {
 
       {/* Action Confirmation Modal */}
       {modalAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-              {modalAction.type === 'approve' && <CheckCircle className="w-5 h-5 text-emerald-400" />}
-              {modalAction.type === 'reject' && <XCircle className="w-5 h-5 text-rose-400" />}
-              {modalAction.type === 'reupload' && <RotateCcw className="w-5 h-5 text-amber-400" />}
-              <span className="capitalize">{modalAction.type} Campaign Audit</span>
+        <div className="admin-modal-overlay">
+          <div className="admin-modal" style={{ padding: '1.75rem' }}>
+            <h3 style={{ color: '#fff', fontWeight: 800, marginTop: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {modalAction.type === 'approve' && <CheckCircle style={{ color: '#10b981' }} size={22} />}
+              {modalAction.type === 'reject' && <XCircle style={{ color: '#ef4444' }} size={22} />}
+              {modalAction.type === 'reupload' && <RotateCcw style={{ color: '#f59e0b' }} size={22} />}
+              <span style={{ textTransform: 'capitalize' }}>{modalAction.type} Campaign Audit</span>
             </h3>
 
-            <p className="text-sm text-slate-300">
-              Are you sure you want to {modalAction.type} campaign &quot;<strong>{modalAction.title}</strong>&quot;?
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              Are you sure you want to {modalAction.type} campaign &quot;<strong style={{ color: '#fff' }}>{modalAction.title}</strong>&quot;?
             </p>
 
             <textarea
@@ -334,27 +360,18 @@ export const AdminPendingPage: React.FC = () => {
               placeholder="Enter audit notes / reason for audit log..."
               value={actionReason}
               onChange={(e) => setActionReason(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-blue-500"
+              className="admin-input"
+              style={{ width: '100%', marginBottom: '1.25rem', resize: 'vertical' }}
             />
 
-            <div className="flex justify-end space-x-3 pt-2">
-              <button
-                onClick={() => setModalAction(null)}
-                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors"
-                disabled={isSubmitting}
-              >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button onClick={() => setModalAction(null)} className="admin-btn admin-btn-secondary" disabled={isSubmitting}>
                 Cancel
               </button>
               <button
                 onClick={handleExecuteAction}
                 disabled={isSubmitting}
-                className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all ${
-                  modalAction.type === 'approve'
-                    ? 'bg-emerald-600 hover:bg-emerald-500'
-                    : modalAction.type === 'reject'
-                    ? 'bg-rose-600 hover:bg-rose-500'
-                    : 'bg-amber-600 hover:bg-amber-500'
-                }`}
+                className={`admin-btn ${modalAction.type === 'approve' ? 'admin-btn-success' : modalAction.type === 'reject' ? 'admin-btn-danger' : 'admin-btn-warning'}`}
               >
                 {isSubmitting ? 'Processing...' : 'Confirm Action'}
               </button>
