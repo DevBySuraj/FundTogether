@@ -92,25 +92,10 @@ export const WalletActivityPage: React.FC = () => {
     setEndDate('');
     setPage(1);
 
-    // Immediately trigger server fetch with cleared filter parameters
-    setIsLoading(true);
-    walletActivityAPI
-      .getActivity({ page: 1, limit: 10 })
-      .then((response) => {
-        const data = response.data || {};
-        setRecords(data.records || []);
-        setStatCards(data.statistics?.cards || []);
-        if (data.meta) {
-          setTotalPages(data.meta.totalPages || 1);
-          setTotalRecords(data.meta.totalRecords || 0);
-        }
-      })
-      .catch((err) => {
-        console.error('Error clearing filters:', err);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    // Wipes displayed records from the screen on Clear
+    setRecords([]);
+    setTotalRecords(0);
+    setTotalPages(1);
   };
 
   const getRoleHeaderInfo = () => {
@@ -289,14 +274,23 @@ export const WalletActivityPage: React.FC = () => {
             />
           </div>
 
-          {/* Clear Filters Button */}
-          <div className="col-6 col-md-2">
+          {/* Clear Log & Reload Buttons */}
+          <div className="col-12 col-md-2 d-flex gap-1">
             <button
               type="button"
               onClick={handleClearFilters}
-              className="btn brutal-btn brutal-btn-yellow w-100 fw-bold"
+              className="btn brutal-btn brutal-btn-yellow w-50 fw-bold px-1"
+              title="Clear displayed transaction records from screen"
             >
-              <i className="bi bi-x-circle me-1"></i> Clear
+              <i className="bi bi-trash3-fill me-1"></i> Clear
+            </button>
+            <button
+              type="button"
+              onClick={fetchActivity}
+              className="btn brutal-btn brutal-btn-lime w-50 fw-bold px-1"
+              title="Reload latest records from server"
+            >
+              <i className="bi bi-arrow-clockwise me-1"></i> Reload
             </button>
           </div>
         </div>
