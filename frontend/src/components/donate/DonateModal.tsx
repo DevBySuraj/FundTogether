@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Campaign } from '../../types';
+import { useMetaMask } from '../../hooks/useMetaMask';
+import { useDonation } from '../../hooks/useDonation';
+import { ConnectWalletButton } from './ConnectWalletButton';
+import { NetworkBadge } from './NetworkBadge';
+import { DonationAmountInput } from './DonationAmountInput';
+import { TransactionStatus } from './TransactionStatus';
+import { DonationSuccessModal } from './DonationSuccessModal';
+import { DonationErrorBanner } from './DonationErrorBanner';
 
 interface DonateModalProps {
   campaign: Campaign | null;
@@ -7,291 +15,255 @@ interface DonateModalProps {
   onSuccess: () => void;
 }
 
-export const DonateModal: React.FC<DonateModalProps> = ({
-  campaign,
-  onClose,
-  onSuccess,
-}) => {
-  const [amountInr, setAmountInr] = useState<string>('1000');
-  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet'>('upi');
-  
-  // Method specific fields
-  const [upiId, setUpiId] = useState<string>('donor@okaxis');
-  const [cardNumber, setCardNumber] = useState<string>('4111 2222 3333 4444');
-  const [cardExpiry, setCardExpiry] = useState<string>('12/28');
-  const [cardCvv, setCardCvv] = useState<string>('123');
+/** Compact trust-score badge */
+const TrustBadge: React.FC<{ label: string; icon: string; active?: boolean }> = ({
+  label, icon, active,
+}) => (
+  <span className={`w3-trust-badge ${active ? 'w3-trust-badge-active' : 'w3-trust-badge-inactive'}`}>
+    {icon} {label}
+  </span>
+);
 
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [txMessage, setTxMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+/** Compact campaign progress bar */
+const ProgressBar: React.FC<{ current: number; target: number }> = ({ current, target }) => {
+  const pct = Math.min(100, target > 0 ? (current / target) * 100 : 0);
+  return (
+    <div className="w3-prog-wrap">
+      <div className="w3-prog-track">
+        <div className="w3-prog-fill" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="w3-prog-labels">
+        <span>{current.toFixed(4)} POL raised</span>
+        <span>{pct.toFixed(1)}%</span>
+        <span>Goal: {target} POL</span>
+      </div>
+    </div>
+  );
+};
+
+export const DonateModal: React.FC<DonateModalProps> = ({ campaign, onClose, onSuccess }) => {
+  const [amount, setAmount] = useState<string>('0.01');
+
+  const {
+    isInstalled,
+    account,
+    chainId,
+    isConnecting,
+    isCorrectNetwork,
+    connectWallet,
+    switchToPolygonAmoy,
+  } = useMetaMask();
+
+  const { state, donateToCampaign, reset } = useDonation();
+
+  // Propagate success upward (refresh campaign list)
+  useEffect(() => {
+    if (state.step === 'success') {
+      onSuccess();
+    }
+  }, [state.step, onSuccess]);
+
+  // Close modal and reset when not visible
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
 
   if (!campaign) return null;
 
-  const quickAmounts = ['500', '1000', '5000', '10000'];
+  const isMining = state.step === 'mining' || state.step === 'notifying';
+  const isActive = campaign.status === 'ACTIVE';
+  const hasRecipientWallet =
+    campaign.recipientWallet && campaign.recipientWallet !== 'pending_wallet_verification';
 
-  const formatInr = (amt: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amt);
-  };
+  // ── Trust/Verification Badges ──────────────────────────────────────────────
+  const hasIpfs = !!campaign.ipfsCid;
+  const hasBlockchain = !!campaign.txHash;
+  const hasWallet = hasRecipientWallet;
 
-  const handleDonate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setTxMessage(null);
+  // ── Success Screen ─────────────────────────────────────────────────────────
+  if (state.step === 'success' && state.txHash) {
+    return (
+      <div className="w3-modal-overlay" onClick={handleClose}>
+        <div onClick={(e) => e.stopPropagation()}>
+          <DonationSuccessModal
+            txHash={state.txHash}
+            amount={state.amount}
+            campaignTitle={campaign.title}
+            blockNumber={state.blockNumber}
+            onClose={handleClose}
+          />
+        </div>
+      </div>
+    );
+  }
 
-    const numericAmount = parseFloat(amountInr);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      setErrorMessage('Please enter a valid donation amount in ₹ INR.');
+  const handleDonate = async () => {
+    if (!account) {
+      await connectWallet();
       return;
     }
-
-    setIsSubmitting(true);
-
-    try {
-      setTxMessage(`Processing ${paymentMethod.toUpperCase()} donation of ${formatInr(numericAmount)}...`);
-      await new Promise((resolve) => setTimeout(resolve, 1400));
-
-      const txnId = 'TXN-INR-' + Math.floor(100000 + Math.random() * 900000);
-      setTxMessage(`Donation of ${formatInr(numericAmount)} via ${paymentMethod.toUpperCase()} successful! Receipt ID: ${txnId}`);
-      
-      campaign.currentAmount += numericAmount;
-
-      onSuccess();
-      setTimeout(() => {
-        onClose();
-      }, 2200);
-    } catch (err: any) {
-      console.error('Donation error:', err);
-      setErrorMessage(err.message || 'Donation payment failed.');
-    } finally {
-      setIsSubmitting(false);
+    if (!isCorrectNetwork) {
+      await switchToPolygonAmoy();
+      return;
     }
+    await donateToCampaign(campaign, amount, account);
   };
 
+  const numAmount = parseFloat(amount);
+  const canDonate =
+    isInstalled &&
+    !!account &&
+    isCorrectNetwork &&
+    !isNaN(numAmount) &&
+    numAmount > 0 &&
+    !isMining &&
+    isActive;
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-content brutal-modal">
-          {/* Modal Header */}
-          <div className="modal-header d-flex justify-content-between align-items-center">
-            <h4 className="modal-title fw-black text-uppercase mb-0">
-              <i className="bi bi-heart-fill text-danger me-2"></i> Donate (₹ INR)
-            </h4>
-            <button className="btn-close" onClick={onClose}></button>
-          </div>
+    <div className="w3-modal-overlay" onClick={handleClose}>
+      <div className="w3-donate-modal" onClick={(e) => e.stopPropagation()}>
 
-          <div className="modal-body p-4">
-            {/* Campaign Summary Card */}
-            <div className="brutal-card p-3 mb-4 bg-light">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <span className="brutal-badge badge-cyan">{campaign.category}</span>
-                <span className="small text-secondary fw-bold">Target: {formatInr(campaign.targetAmount)}</span>
-              </div>
-              <h5 className="fw-bold mb-1">{campaign.title}</h5>
-              <p className="text-secondary small mb-0">
-                Recipient: <code className="fw-bold text-dark">{campaign.recipientWallet}</code>
-              </p>
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="w3-modal-header">
+          <div className="w3-modal-header-left">
+            <span className="w3-modal-header-icon">💜</span>
+            <div>
+              <h3 className="w3-modal-title">Donate with MetaMask</h3>
+              <span className="w3-modal-subtitle">Polygon Amoy · Secure · On-Chain</span>
             </div>
-
-            {errorMessage && (
-              <div className="alert alert-danger fw-bold small mb-3">{errorMessage}</div>
-            )}
-
-            {txMessage && (
-              <div className="alert alert-success fw-bold small mb-3 d-flex align-items-center gap-2">
-                <i className="bi bi-check-circle-fill fs-5"></i>
-                <span>{txMessage}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleDonate}>
-              {/* Amount Input */}
-              <div className="mb-3">
-                <label className="form-label fw-bold">Donation Amount (₹ INR)</label>
-                <div className="input-group input-group-lg">
-                  <span className="input-group-text fw-bold bg-dark text-white">₹</span>
-                  <input
-                    type="number"
-                    min="10"
-                    step="10"
-                    className="form-control fw-bold"
-                    required
-                    placeholder="e.g. 1000"
-                    value={amountInr}
-                    onChange={(e) => setAmountInr(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Quick Amount Selector Buttons */}
-              <div className="d-flex gap-2 mb-4">
-                {quickAmounts.map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setAmountInr(amt)}
-                    className={`btn brutal-btn btn-sm flex-fill ${amountInr === amt ? 'brutal-btn-lime' : ''}`}
-                  >
-                    ₹ {parseInt(amt).toLocaleString('en-IN')}
-                  </button>
-                ))}
-              </div>
-
-              {/* Payment Method Tabs */}
-              <label className="form-label fw-bold mb-2">Select Payment Method</label>
-              <div className="row g-2 mb-4">
-                <div className="col-6 col-md-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('upi')}
-                    className={`btn brutal-btn w-100 py-2 ${paymentMethod === 'upi' ? 'brutal-btn-lime' : ''}`}
-                  >
-                    <i className="bi bi-qr-code-scan me-1"></i> UPI
-                  </button>
-                </div>
-
-                <div className="col-6 col-md-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('card')}
-                    className={`btn brutal-btn w-100 py-2 ${paymentMethod === 'card' ? 'brutal-btn-cyan' : ''}`}
-                  >
-                    <i className="bi bi-credit-card-2-front-fill me-1"></i> Cards
-                  </button>
-                </div>
-
-                <div className="col-6 col-md-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('netbanking')}
-                    className={`btn brutal-btn w-100 py-2 ${paymentMethod === 'netbanking' ? 'brutal-btn-yellow' : ''}`}
-                  >
-                    <i className="bi bi-bank2 me-1"></i> NetBanking
-                  </button>
-                </div>
-
-                <div className="col-6 col-md-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('wallet')}
-                    className={`btn brutal-btn w-100 py-2 ${paymentMethod === 'wallet' ? 'brutal-btn-magenta' : ''}`}
-                  >
-                    <i className="bi bi-wallet2 me-1"></i> Web3 Wallet
-                  </button>
-                </div>
-              </div>
-
-              {/* Payment Method Details Box */}
-              {paymentMethod === 'upi' && (
-                <div className="p-3 border border-3 border-dark bg-light mb-4">
-                  <div className="d-flex align-items-center gap-2 mb-3">
-                    <span className="brutal-badge badge-lime">Google Pay / PhonePe / Paytm / BHIM</span>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label fw-bold small">Your UPI Virtual Payment Address (VPA)</label>
-                    <input
-                      type="text"
-                      className="form-control font-monospace"
-                      placeholder="username@upi"
-                      required
-                      value={upiId}
-                      onChange={(e) => setUpiId(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="text-center p-3 bg-white border border-2 border-dark">
-                    <i className="bi bi-qr-code fs-1 text-primary"></i>
-                    <p className="small text-secondary mb-0 fw-bold">Scan or Pay using any UPI app on your phone</p>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'card' && (
-                <div className="p-3 border border-3 border-dark bg-light mb-4">
-                  <div className="d-flex align-items-center gap-2 mb-3">
-                    <span className="brutal-badge badge-cyan">Visa / MasterCard / RuPay</span>
-                  </div>
-
-                  <div className="mb-3">
-                    <label className="form-label fw-bold small">Card Number</label>
-                    <input
-                      type="text"
-                      className="form-control font-monospace"
-                      placeholder="4111 2222 3333 4444"
-                      required
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="row">
-                    <div className="col-6">
-                      <label className="form-label fw-bold small">Expiry Date</label>
-                      <input
-                        type="text"
-                        className="form-control font-monospace"
-                        placeholder="MM/YY"
-                        required
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                      />
-                    </div>
-                    <div className="col-6">
-                      <label className="form-label fw-bold small">CVV</label>
-                      <input
-                        type="password"
-                        className="form-control font-monospace"
-                        maxLength={4}
-                        placeholder="123"
-                        required
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'netbanking' && (
-                <div className="p-3 border border-3 border-dark bg-light mb-4">
-                  <label className="form-label fw-bold small">Select Your Bank</label>
-                  <select className="form-select fw-bold mb-2">
-                    <option value="HDFC">HDFC Bank</option>
-                    <option value="ICICI">ICICI Bank</option>
-                    <option value="SBI">State Bank of India (SBI)</option>
-                    <option value="AXIS">Axis Bank</option>
-                    <option value="KOTAK">Kotak Mahindra Bank</option>
-                  </select>
-                </div>
-              )}
-
-              {paymentMethod === 'wallet' && (
-                <div className="p-3 border border-3 border-dark bg-light mb-4 text-center">
-                  <i className="bi bi-wallet2 fs-2 text-primary mb-1"></i>
-                  <h6 className="fw-bold mb-1">Digital Web3 / Wallet Transfer</h6>
-                  <p className="small text-secondary mb-0">Direct wallet transfer logged on immutable IPFS storage.</p>
-                </div>
-              )}
-
-              {/* Submit Payment Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn brutal-btn brutal-btn-lime w-100 py-3 fs-5 fw-bold text-uppercase"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2"></span>
-                    Processing {paymentMethod.toUpperCase()} Payment...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-shield-lock-fill text-dark me-2"></i> Pay ₹ {parseFloat(amountInr || '0').toLocaleString('en-IN')} via {paymentMethod.toUpperCase()}
-                  </>
-                )}
-              </button>
-            </form>
           </div>
+          <button className="w3-modal-close" onClick={handleClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="w3-modal-body">
+
+          {/* ── Campaign Summary ─────────────────────────────────────────── */}
+          <div className="w3-campaign-summary">
+            <div className="w3-campaign-summary-header">
+              <span className="w3-campaign-category">{campaign.category}</span>
+              <span className={`w3-campaign-status ${isActive ? 'w3-campaign-status-active' : ''}`}>
+                {campaign.status}
+              </span>
+            </div>
+            <h4 className="w3-campaign-title">{campaign.title}</h4>
+            <ProgressBar current={campaign.currentAmount} target={campaign.targetAmount} />
+
+            {/* Verification Badges */}
+            <div className="w3-badges-row">
+              <TrustBadge label="AI Verified" icon="🤖" active />
+              <TrustBadge label="Admin Approved" icon="✅" active />
+              <TrustBadge label="Wallet Verified" icon="🔐" active={!!hasWallet} />
+              <TrustBadge label="IPFS" icon="📦" active={hasIpfs} />
+              <TrustBadge label="On-Chain" icon="⛓" active={hasBlockchain} />
+            </div>
+          </div>
+
+          {/* ── Wallet Connection Row ────────────────────────────────────── */}
+          <div className="w3-wallet-row">
+            <div className="w3-wallet-row-left">
+              <ConnectWalletButton
+                isInstalled={isInstalled}
+                account={account}
+                isConnecting={isConnecting}
+                onConnect={connectWallet}
+              />
+            </div>
+            <NetworkBadge chainId={chainId} onSwitch={switchToPolygonAmoy} />
+          </div>
+
+          {/* ── Wrong Network Warning ────────────────────────────────────── */}
+          {account && !isCorrectNetwork && (
+            <div className="w3-network-warning">
+              <span>⚠</span>
+              <span>
+                Switch to <strong>Polygon Amoy Testnet</strong> to donate.{' '}
+                <button onClick={switchToPolygonAmoy} className="w3-switch-link">
+                  Switch now
+                </button>
+              </span>
+            </div>
+          )}
+
+          {/* ── Not Active Campaign Warning ──────────────────────────────── */}
+          {!isActive && (
+            <div className="w3-network-warning">
+              <span>🔒</span>
+              <span>
+                This campaign is <strong>{campaign.status}</strong> and not yet open for donations.
+                Only <strong>ACTIVE</strong> campaigns accept donations.
+              </span>
+            </div>
+          )}
+
+          {/* ── No Recipient Wallet Warning ──────────────────────────────── */}
+          {isActive && !hasRecipientWallet && (
+            <div className="w3-network-warning">
+              <span>🔐</span>
+              <span>The recipient&apos;s wallet has not been verified yet. Donation locked.</span>
+            </div>
+          )}
+
+          {/* ── Donation Amount Input ────────────────────────────────────── */}
+          {isActive && hasRecipientWallet && (
+            <DonationAmountInput
+              value={amount}
+              onChange={setAmount}
+              disabled={isMining}
+            />
+          )}
+
+          {/* ── Transaction Step Progress ────────────────────────────────── */}
+          {state.step !== 'idle' && state.step !== 'error' && (
+            <TransactionStatus step={state.step} txHash={state.txHash} />
+          )}
+
+          {/* ── Error Banner ─────────────────────────────────────────────── */}
+          {state.error && state.step === 'error' && (
+            <DonationErrorBanner
+              error={state.error}
+              onRetry={reset}
+              onDismiss={reset}
+            />
+          )}
+
+          {/* ── Donate Button ────────────────────────────────────────────── */}
+          <button
+            id="donate-metamask-btn"
+            onClick={handleDonate}
+            disabled={
+              isMining ||
+              !isActive ||
+              !hasRecipientWallet ||
+              (!!account && isCorrectNetwork && (isNaN(numAmount) || numAmount <= 0))
+            }
+            className={`w3-donate-btn ${isMining ? 'w3-donate-btn-mining' : canDonate ? 'w3-donate-btn-ready' : 'w3-donate-btn-disabled'}`}
+          >
+            {isMining ? (
+              <>
+                <span className="w3-spinner" />
+                {state.step === 'notifying' ? 'Confirming with backend…' : 'Mining transaction…'}
+              </>
+            ) : !isInstalled ? (
+              '🦊 Install MetaMask to Donate'
+            ) : !account ? (
+              '🦊 Connect MetaMask'
+            ) : !isCorrectNetwork ? (
+              '⚠ Switch to Polygon Amoy'
+            ) : !isActive ? (
+              '🔒 Campaign Not Active'
+            ) : !hasRecipientWallet ? (
+              '🔐 Wallet Not Verified'
+            ) : (
+              `💜 Donate ${numAmount > 0 ? numAmount + ' POL' : ''} with MetaMask`
+            )}
+          </button>
+
+          {/* ── Security Note ────────────────────────────────────────────── */}
+          <p className="w3-security-note">
+            🔒 Funds go directly to the verified recipient wallet via smart contract.
+            Your private keys never leave your device.
+          </p>
         </div>
       </div>
     </div>

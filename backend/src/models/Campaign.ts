@@ -51,6 +51,11 @@ const CampaignSchema = new Schema<ICampaign>(
       ref: 'Verification',
       index: true,
     },
+    campaignOnChainId: {
+      type: Number,
+      sparse: true,
+      index: true,
+    },
     documentHash: {
       type: String,
     },

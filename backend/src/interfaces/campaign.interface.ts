@@ -11,6 +11,7 @@ export interface ICampaign extends MongooseDocument {
   category: string;
   recipientWallet: string;
   status: CampaignStatus;
+  campaignOnChainId?: number;
   verificationId?: Types.ObjectId;
   documentHash?: string;
   ipfsCid?: string;

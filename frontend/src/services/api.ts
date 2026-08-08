@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Campaign, TrustReport, VerificationRecord } from '../types';
+import type { Campaign, TrustReport, VerificationRecord, DonationConfirmPayload, DonationConfirmResult, DonationRecord } from '../types';
 
 // Determine base URL: use env variable in production, fallback to localhost for dev
 const rawBase = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000';
@@ -141,6 +141,33 @@ export const adminAPI = {
   },
   reject: async (verificationId: string, campaignId?: string, reason?: string) => {
     const res = await api.post('/admin/reject', { verificationId, campaignId, reason });
+    return res.data;
+  },
+};
+
+export const donationAPI = {
+  /**
+   * POST /donation/confirm — called after MetaMask transaction is mined.
+   * Backend verifies on-chain, saves Transaction, increments campaign.currentAmount.
+   */
+  confirmDonation: async (payload: DonationConfirmPayload): Promise<{ data: DonationConfirmResult }> => {
+    const res = await api.post<{ data: DonationConfirmResult }>('/donation/confirm', payload);
+    return res.data;
+  },
+
+  /**
+   * GET /donation/history/:campaignId — returns paginated donation history.
+   */
+  getHistory: async (campaignId: string): Promise<{ data: { donations: DonationRecord[]; totalEthRaised: number; totalCount: number } }> => {
+    const res = await api.get<{ data: { donations: DonationRecord[]; totalEthRaised: number; totalCount: number } }>(`/donation/history/${campaignId}`);
+    return res.data;
+  },
+
+  /**
+   * GET /donation/campaign-stats/:campaignId — aggregated stats (raised, donor count).
+   */
+  getCampaignStats: async (campaignId: string) => {
+    const res = await api.get(`/donation/campaign-stats/${campaignId}`);
     return res.data;
   },
 };

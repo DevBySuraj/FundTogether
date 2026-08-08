@@ -553,3 +553,817 @@ body {
     padding: .45rem .75rem;
   }
 }
+
+/* ===============================
+   WEB3 DONATION MODULE
+==================================*/
+
+/* ── Modal Overlay ─────────────────────────────────────── */
+.w3-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9900;
+  padding: 1rem;
+  animation: w3-fade-in 0.2s ease;
+}
+
+@keyframes w3-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Donate Modal Card ─────────────────────────────────── */
+.w3-donate-modal {
+  background: #fff;
+  border: 3px solid #111;
+  box-shadow: 10px 10px 0 #111;
+  border-radius: 2px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: w3-slide-up 0.25s ease;
+}
+
+@keyframes w3-slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Modal Header ──────────────────────────────────────── */
+.w3-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 2px solid #111;
+  background: linear-gradient(135deg, #1a0533 0%, #2d0a5e 100%);
+  color: #fff;
+}
+.w3-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.w3-modal-header-icon {
+  font-size: 1.8rem;
+}
+.w3-modal-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0;
+  color: #fff;
+}
+.w3-modal-subtitle {
+  font-size: 0.72rem;
+  color: #c4a8f0;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.w3-modal-close {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.w3-modal-close:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+/* ── Modal Body ────────────────────────────────────────── */
+.w3-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Campaign Summary ──────────────────────────────────── */
+.w3-campaign-summary {
+  background: #f8f4ff;
+  border: 2px solid #c4a8f0;
+  border-radius: 2px;
+  padding: 1rem;
+}
+.w3-campaign-summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.w3-campaign-category {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: #7c3aed;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+.w3-campaign-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: #e5e7eb;
+  color: #374151;
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+.w3-campaign-status-active {
+  background: #d1fae5;
+  color: #065f46;
+}
+.w3-campaign-title {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0.4rem 0 0.75rem;
+  color: #1a0533;
+  line-height: 1.3;
+}
+
+/* ── Progress Bar ──────────────────────────────────────── */
+.w3-prog-wrap { margin-bottom: 0.75rem; }
+.w3-prog-track {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+  border: 1px solid #d1d5db;
+}
+.w3-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+.w3-prog-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* ── Verification Trust Badges ─────────────────────────── */
+.w3-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.w3-trust-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+  border: 1px solid;
+}
+.w3-trust-badge-active {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+.w3-trust-badge-inactive {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+/* ── Wallet Connection Row ─────────────────────────────── */
+.w3-wallet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.w3-wallet-row-left {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Connect Wallet Button ─────────────────────────────── */
+.w3-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border-radius: 2px;
+  border: 2px solid #111;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  text-decoration: none;
+}
+.w3-btn:active { transform: translate(2px, 2px); }
+.w3-btn-connect {
+  background: #f97316;
+  color: #fff;
+  box-shadow: 3px 3px 0 #111;
+}
+.w3-btn-connect:hover { box-shadow: 5px 5px 0 #111; }
+.w3-btn-connect:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.w3-btn-install {
+  background: #fef3c7;
+  color: #111;
+  box-shadow: 3px 3px 0 #111;
+}
+.w3-btn-install:hover { box-shadow: 5px 5px 0 #111; }
+.w3-btn-icon { font-size: 1.1rem; }
+
+.w3-wallet-connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  background: #d1fae5;
+  border: 2px solid #6ee7b7;
+  border-radius: 2px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #065f46;
+}
+.w3-wallet-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: w3-pulse 1.5s ease infinite;
+}
+@keyframes w3-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.w3-wallet-address { font-family: 'Courier New', monospace; }
+
+/* ── Network Badge ─────────────────────────────────────── */
+.w3-network-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 2px;
+  border: 2px solid;
+  white-space: nowrap;
+}
+.w3-network-ok {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+.w3-network-wrong {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.w3-network-wrong:hover { transform: scale(1.02); }
+.w3-network-unknown {
+  background: #f3f4f6;
+  color: #6b7280;
+  border-color: #d1d5db;
+}
+
+/* ── Network Warning Banner ────────────────────────────── */
+.w3-network-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: #fffbeb;
+  border: 2px solid #fcd34d;
+  border-radius: 2px;
+  font-size: 0.82rem;
+  color: #78350f;
+  font-weight: 600;
+}
+.w3-switch-link {
+  background: none;
+  border: none;
+  color: #7c3aed;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+}
+
+/* ── Amount Input ──────────────────────────────────────── */
+.w3-amount-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.w3-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.w3-amount-input-row {
+  display: flex;
+  align-items: stretch;
+  border: 2px solid #111;
+  box-shadow: 4px 4px 0 #111;
+  background: #fff;
+  overflow: hidden;
+}
+.w3-amount-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0.75rem 1rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #1a0533;
+  background: transparent;
+  width: 0;
+}
+.w3-amount-input-error { color: #dc2626; }
+.w3-amount-currency {
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  border-left: 2px solid #111;
+}
+.w3-presets {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.w3-preset-btn {
+  padding: 0.35rem 0.75rem;
+  border: 2px solid #111;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s, box-shadow 0.1s;
+  box-shadow: 2px 2px 0 #111;
+}
+.w3-preset-btn:hover { background: #f3e8ff; }
+.w3-preset-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.w3-preset-btn-active {
+  background: #7c3aed;
+  color: #fff;
+  box-shadow: 2px 2px 0 #111;
+}
+.w3-preset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.w3-amount-error { font-size: 0.78rem; color: #dc2626; font-weight: 600; margin: 0; }
+.w3-amount-hint  { font-size: 0.78rem; color: #6b7280; font-weight: 600; margin: 0; }
+
+/* ── Transaction Step Progress ─────────────────────────── */
+.w3-tx-status {
+  background: #faf8ff;
+  border: 2px solid #c4a8f0;
+  border-radius: 2px;
+  padding: 1rem;
+}
+.w3-tx-steps {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.w3-tx-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  position: relative;
+  flex: 1;
+  color: #9ca3af;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.w3-tx-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s;
+}
+.w3-tx-step-done .w3-tx-step-circle {
+  border-color: #10b981;
+  background: #d1fae5;
+  color: #065f46;
+}
+.w3-tx-step-active .w3-tx-step-circle {
+  border-color: #7c3aed;
+  background: #f3e8ff;
+  color: #7c3aed;
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.15);
+}
+.w3-tx-step-label {
+  font-size: 0.65rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.w3-tx-step-done .w3-tx-step-label  { color: #10b981; }
+.w3-tx-step-active .w3-tx-step-label { color: #7c3aed; }
+.w3-tx-connector {
+  position: absolute;
+  top: 16px;
+  left: calc(50% + 16px);
+  right: calc(-50% + 16px);
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
+}
+.w3-tx-connector-done { background: #10b981; }
+.w3-tx-spin {
+  display: inline-block;
+  animation: w3-rotate 1s linear infinite;
+}
+@keyframes w3-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.w3-tx-mining-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #c4a8f0;
+}
+.w3-tx-mining-dots {
+  display: flex;
+  gap: 6px;
+}
+.w3-tx-mining-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7c3aed;
+  animation: w3-bounce 0.6s ease infinite;
+}
+.w3-tx-mining-dots span:nth-child(2) { animation-delay: 0.15s; }
+.w3-tx-mining-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes w3-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+.w3-tx-mining-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #7c3aed;
+  margin: 0;
+}
+.w3-tx-hash-mini {
+  font-size: 0.72rem;
+  color: #6b7280;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* ── Donate Button ─────────────────────────────────────── */
+.w3-donate-btn {
+  width: 100%;
+  padding: 0.9rem 1.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  border: 3px solid #111;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: -0.3px;
+}
+.w3-donate-btn-ready {
+  background: #7c3aed;
+  color: #fff;
+  box-shadow: 5px 5px 0 #111;
+}
+.w3-donate-btn-ready:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #111;
+}
+.w3-donate-btn-ready:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #111;
+}
+.w3-donate-btn-mining {
+  background: #ddd6fe;
+  color: #4c1d95;
+  box-shadow: 3px 3px 0 #aaa;
+  cursor: not-allowed;
+}
+.w3-donate-btn-disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  box-shadow: 3px 3px 0 #ccc;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ───────────────────────────────────────────── */
+.w3-spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  animation: w3-rotate 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.w3-donate-btn-mining .w3-spinner {
+  border-color: rgba(76,29,149,0.3);
+  border-top-color: #4c1d95;
+}
+
+/* ── Security Note ─────────────────────────────────────── */
+.w3-security-note {
+  font-size: 0.72rem;
+  color: #6b7280;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  font-weight: 600;
+}
+
+/* ── Error Banner ──────────────────────────────────────── */
+.w3-error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fef2f2;
+  border: 2px solid #fca5a5;
+  border-radius: 2px;
+  animation: w3-fade-in 0.2s ease;
+}
+.w3-error-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+.w3-error-body {
+  flex: 1;
+}
+.w3-error-message {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #991b1b;
+  margin: 0 0 0.25rem;
+}
+.w3-error-hint {
+  font-size: 0.78rem;
+  color: #b91c1c;
+  margin: 0;
+}
+.w3-error-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.w3-error-btn-retry {
+  padding: 0.35rem 0.75rem;
+  background: #dc2626;
+  color: #fff;
+  border: 2px solid #111;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.w3-error-btn-dismiss {
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid #fca5a5;
+  border-radius: 50%;
+  color: #991b1b;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Success Overlay ───────────────────────────────────── */
+.w3-success-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+.w3-success-card {
+  background: #fff;
+  border: 3px solid #111;
+  box-shadow: 12px 12px 0 #111;
+  border-radius: 2px;
+  padding: 2.5rem 2rem;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  animation: w3-slide-up 0.3s ease;
+}
+.w3-success-icon-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1.25rem;
+}
+.w3-success-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid #7c3aed;
+  animation: w3-ring-expand 0.5s ease forwards;
+}
+@keyframes w3-ring-expand {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.w3-success-check {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #7c3aed;
+  animation: w3-fade-in 0.4s ease 0.2s both;
+}
+.w3-success-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #1a0533;
+  margin: 0 0 0.5rem;
+}
+.w3-success-subtitle {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0 0 1.5rem;
+}
+.w3-success-details {
+  background: #f8f4ff;
+  border: 2px solid #c4a8f0;
+  border-radius: 2px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+.w3-success-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed #e9d5ff;
+  gap: 0.5rem;
+}
+.w3-success-detail-row:last-child { border-bottom: none; }
+.w3-success-detail-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+.w3-success-detail-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a0533;
+  text-align: right;
+}
+.w3-success-amount {
+  font-size: 1.1rem;
+  color: #7c3aed;
+}
+.w3-success-hash {
+  font-size: 0.78rem;
+  color: #4c1d95;
+  word-break: break-all;
+  text-align: right;
+}
+.w3-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.w3-success-btn-explorer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.5rem;
+  background: #7c3aed;
+  color: #fff;
+  border: 2px solid #111;
+  border-radius: 2px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 4px 4px 0 #111;
+  text-decoration: none;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.w3-success-btn-explorer:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #111;
+  color: #fff;
+}
+.w3-success-btn-close {
+  padding: 0.65rem 1.5rem;
+  background: #fff;
+  color: #111;
+  border: 2px solid #111;
+  border-radius: 2px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #111;
+  transition: transform 0.1s;
+}
+.w3-success-btn-close:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #111; }
+
+/* ── Confetti decoration ───────────────────────────────── */
+.w3-confetti {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 60px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.w3-confetti-piece {
+  position: absolute;
+  top: -10px;
+  font-size: 1rem;
+  animation: w3-fall 1.2s ease forwards;
+}
+.w3-confetti-0 { left: 5%;  animation-delay: 0.0s; }
+.w3-confetti-1 { left: 18%; animation-delay: 0.1s; }
+.w3-confetti-2 { left: 32%; animation-delay: 0.2s; }
+.w3-confetti-3 { left: 50%; animation-delay: 0.15s; }
+.w3-confetti-4 { left: 65%; animation-delay: 0.25s; }
+.w3-confetti-5 { left: 78%; animation-delay: 0.1s; }
+.w3-confetti-6 { left: 92%; animation-delay: 0.05s; }
+@keyframes w3-fall {
+  from { top: -10px; opacity: 1; transform: rotate(0deg); }
+  to   { top: 70px;  opacity: 0; transform: rotate(180deg); }
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .w3-donate-modal { max-height: 95vh; }
+  .w3-modal-body   { padding: 1rem; gap: 1rem; }
+  .w3-amount-input { font-size: 1.1rem; }
+  .w3-tx-step-label { display: none; }
+  .w3-success-card { padding: 1.75rem 1.25rem; }
+  .w3-success-actions { gap: 0.5rem; }
+  .w3-wallet-row { flex-direction: column; align-items: flex-start; }
+}
+

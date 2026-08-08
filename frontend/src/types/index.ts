@@ -15,6 +15,7 @@ export interface Campaign {
   documentHash?: string;
   ipfsCid?: string;
   txHash?: string;
+  campaignOnChainId?: number;
   createdAt: string;
 }
 
@@ -77,4 +78,54 @@ export interface User {
   walletAddress?: string;
   walletVerified?: boolean;
   role: 'recipient' | 'user' | 'donor' | 'admin';
+}
+
+// ─── Donation Types ──────────────────────────────────────────────────────────
+
+export type DonationStep =
+  | 'idle'
+  | 'connecting'
+  | 'wrong_network'
+  | 'entering_amount'
+  | 'confirming'
+  | 'mining'
+  | 'notifying'
+  | 'success'
+  | 'error';
+
+export interface DonationState {
+  step: DonationStep;
+  txHash: string | null;
+  blockNumber: number | null;
+  amount: string;
+  error: string | null;
+  onChainVerified: boolean;
+}
+
+export interface DonationRecord {
+  _id?: string;
+  campaignId: string;
+  donorWallet: string;
+  recipientWallet: string;
+  amountEth: string;
+  txHash: string;
+  blockNumber?: number;
+  timestamp: string;
+}
+
+export interface DonationConfirmPayload {
+  campaignId: string;
+  transactionHash: string;
+  donorWallet: string;
+  amount: string;
+}
+
+export interface DonationConfirmResult {
+  txHash: string;
+  blockNumber?: number;
+  onChainVerified: boolean;
+  campaignId: string;
+  campaignTitle: string;
+  donorWallet: string;
+  amount: string;
 }
