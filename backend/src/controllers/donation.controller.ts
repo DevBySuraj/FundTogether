@@ -118,17 +118,24 @@ export class DonationController {
       if (provider) {
         try {
           const receipt = await provider.getTransactionReceipt(txHashNorm);
-          if (!receipt) {
-            return sendError(res, 'Transaction not yet mined or not found on blockchain.', 422);
+          if (receipt) {
+            if (receipt.status !== 1) {
+              // On-chain reverted — reject immediately
+              return sendError(res, 'Transaction failed on-chain (status = 0). Donation not recorded.', 422);
+            }
+            blockNumber = receipt.blockNumber;
+            onChainVerified = true;
+          } else {
+            // Receipt null: tx broadcast but not yet mined (common with slow public RPCs).
+            // Accept it optimistically — PolygonScan link in success screen lets donor verify.
+            console.info(
+              `[DonationController] TX ${txHashNorm} not yet mined — recording as pending.`
+            );
+            onChainVerified = false;
           }
-          if (receipt.status !== 1) {
-            return sendError(res, 'Transaction failed on-chain (status = 0). Donation not recorded.', 422);
-          }
-          blockNumber = receipt.blockNumber;
-          onChainVerified = true;
         } catch (rpcErr: any) {
-          // RPC failure: still accept but flag as unverified
-          console.warn('[DonationController] RPC verification failed, recording with flag:', rpcErr.message);
+          // RPC rate-limited (-32002) or unreachable — accept optimistically
+          console.warn('[DonationController] RPC check failed (non-fatal):', rpcErr.message);
           onChainVerified = false;
         }
       }
