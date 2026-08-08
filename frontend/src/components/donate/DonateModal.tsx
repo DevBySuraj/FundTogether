@@ -54,7 +54,7 @@ export const DonateModal: React.FC<DonateModalProps> = ({ campaign, onClose, onS
     switchToPolygonAmoy,
   } = useMetaMask();
 
-  const { state, donateToCampaign, reset } = useDonation();
+  const { state, donateToCampaign, donateDemoMode, reset } = useDonation();
 
   // Propagate success upward (refresh campaign list)
   useEffect(() => {
@@ -98,7 +98,7 @@ export const DonateModal: React.FC<DonateModalProps> = ({ campaign, onClose, onS
     );
   }
 
-  const handleDonate = async () => {
+  const handleDonateReal = async () => {
     if (!account) {
       await connectWallet();
       return;
@@ -108,6 +108,10 @@ export const DonateModal: React.FC<DonateModalProps> = ({ campaign, onClose, onS
       return;
     }
     await donateToCampaign(campaign, amount, account);
+  };
+
+  const handleDonateDemo = async () => {
+    await donateDemoMode(campaign, amount, account || undefined);
   };
 
   const numAmount = parseFloat(amount);
@@ -224,45 +228,60 @@ export const DonateModal: React.FC<DonateModalProps> = ({ campaign, onClose, onS
               error={state.error}
               onRetry={reset}
               onDismiss={reset}
+              onDemo={handleDonateDemo}
             />
           )}
 
-          {/* ── Donate Button ────────────────────────────────────────────── */}
-          <button
-            id="donate-metamask-btn"
-            onClick={handleDonate}
-            disabled={
-              isMining ||
-              !isActive ||
-              !hasRecipientWallet ||
-              (!!account && isCorrectNetwork && (isNaN(numAmount) || numAmount <= 0))
-            }
-            className={`w3-donate-btn ${isMining ? 'w3-donate-btn-mining' : canDonate ? 'w3-donate-btn-ready' : 'w3-donate-btn-disabled'}`}
-          >
-            {isMining ? (
-              <>
-                <span className="w3-spinner" />
-                {state.step === 'notifying' ? 'Confirming with backend…' : 'Mining transaction…'}
-              </>
-            ) : !isInstalled ? (
-              '🦊 Install MetaMask to Donate'
-            ) : !account ? (
-              '🦊 Connect MetaMask'
-            ) : !isCorrectNetwork ? (
-              '⚠ Switch to Polygon Amoy'
-            ) : !isActive ? (
-              '🔒 Campaign Not Active'
-            ) : !hasRecipientWallet ? (
-              '🔐 Wallet Not Verified'
-            ) : (
-              `💜 Donate ${numAmount > 0 ? numAmount + ' POL' : ''} with MetaMask`
-            )}
-          </button>
+          {/* ── Donate Buttons ────────────────────────────────────────────── */}
+          <div className="d-flex flex-column gap-2">
+            {/* Real MetaMask Button */}
+            <button
+              id="donate-metamask-btn"
+              onClick={handleDonateReal}
+              disabled={
+                isMining ||
+                !isActive ||
+                !hasRecipientWallet ||
+                (!!account && isCorrectNetwork && (isNaN(numAmount) || numAmount <= 0))
+              }
+              className={`w3-donate-btn ${isMining ? 'w3-donate-btn-mining' : canDonate ? 'w3-donate-btn-ready' : 'w3-donate-btn-disabled'}`}
+            >
+              {isMining ? (
+                <>
+                  <span className="w3-spinner" />
+                  {state.step === 'notifying' ? 'Confirming with backend…' : 'Mining transaction…'}
+                </>
+              ) : !isInstalled ? (
+                '🦊 Install MetaMask to Donate'
+              ) : !account ? (
+                '🦊 Connect MetaMask'
+              ) : !isCorrectNetwork ? (
+                '⚠ Switch to Polygon Amoy'
+              ) : !isActive ? (
+                '🔒 Campaign Not Active'
+              ) : !hasRecipientWallet ? (
+                '🔐 Wallet Not Verified'
+              ) : (
+                `💜 Donate ${numAmount > 0 ? numAmount + ' POL' : ''} with MetaMask`
+              )}
+            </button>
+
+            {/* Instant Demo Mode Button (100% Reliable Hackathon Fallback) */}
+            <button
+              type="button"
+              onClick={handleDonateDemo}
+              disabled={isMining || !isActive}
+              className="btn brutal-btn brutal-btn-yellow w-100 py-2 fw-bold"
+              title="Instantly process transaction and update MongoDB Atlas without testnet congestion"
+            >
+              ⚡ Fast Demo Donation (Bypass Testnet RPC)
+            </button>
+          </div>
 
           {/* ── Security Note ────────────────────────────────────────────── */}
           <p className="w3-security-note">
-            🔒 Funds go directly to the verified recipient wallet via smart contract.
-            Your private keys never leave your device.
+            🔒 Funds go directly to the verified recipient wallet.
+            Both real MetaMask Web3 &amp; instant demo mode save transactions to MongoDB Atlas.
           </p>
         </div>
       </div>
