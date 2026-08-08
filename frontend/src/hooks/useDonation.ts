@@ -95,7 +95,6 @@ export const useDonation = (): UseDonationReturn => {
             CONTRACT_ADDRESS !== '' &&
             CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000'
           ) {
-            // Smart contract execution path
             const provider = new ethers.BrowserProvider((window as any).ethereum);
             const signer = await provider.getSigner();
             const contract = new ethers.Contract(
@@ -110,8 +109,6 @@ export const useDonation = (): UseDonationReturn => {
             });
             txHash = tx.hash;
           } else {
-            // Native direct transfer via eth_sendTransaction
-            // Eliminates ethers.js RPC fee fetching and 'could not coalesce error' completely!
             const recipientWallet = campaign.recipientWallet;
             if (
               !recipientWallet ||
@@ -119,7 +116,7 @@ export const useDonation = (): UseDonationReturn => {
               !ethers.isAddress(recipientWallet)
             ) {
               setStep('error', {
-                error: `Recipient wallet address (${recipientWallet || 'none'}) is invalid or not verified yet. Recipient must connect MetaMask first.`,
+                error: `Recipient wallet address (${recipientWallet || 'none'}) is invalid or not verified yet. The recipient must connect their MetaMask wallet first.`,
               });
               return;
             }
@@ -205,13 +202,13 @@ export const useDonation = (): UseDonationReturn => {
           err?.message?.includes('insufficient funds') ||
           err?.message?.includes('exceeds balance')
         ) {
-          userMessage = 'Insufficient balance in your wallet for this donation. Get free POL testnet tokens at faucet.polygon.technology.';
+          userMessage = 'Insufficient POL balance in your wallet. Get free testnet POL at faucet.polygon.technology.';
         } else if (
-          err?.message?.includes('coalesce') ||
           err?.code === -32002 ||
-          err?.message?.includes('too many errors')
+          err?.message?.includes('too many errors') ||
+          err?.message?.includes('coalesce')
         ) {
-          userMessage = 'MetaMask RPC provider returned an ambiguous status. If you confirmed the prompt in MetaMask, check amoy.polygonscan.com for your wallet address.';
+          userMessage = 'MetaMask RPC node is busy. Fix: Change your MetaMask RPC URL to https://rpc.ankr.com/polygon_amoy in Settings -> Networks -> Polygon Amoy.';
         } else if (err?.code === 'NETWORK_ERROR') {
           userMessage = 'Network error. Please check your internet connection and try again.';
         }
