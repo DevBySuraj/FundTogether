@@ -36,6 +36,18 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
+  register: async (data: { name: string; email: string; password: string; role: 'recipient' | 'donor' }) => {
+    const res = await api.post('/auth/register', data);
+    return res.data;
+  },
+  login: async (data: { email: string; password: string }) => {
+    const res = await api.post('/auth/login', data);
+    return res.data;
+  },
+  setPassword: async (password: string) => {
+    const res = await api.post('/auth/set-password', { password });
+    return res.data;
+  },
   googleLogin: async (credentialToken: string, role: 'recipient' | 'donor') => {
     const res = await api.post('/auth/google', { token: credentialToken, role });
     return res.data;
