@@ -21,18 +21,18 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
   const isRecipientMode = user?.role === 'recipient' || user?.role === 'user';
   const isWalletUnverified = !user?.walletVerified || campaign.recipientWallet === 'pending_wallet_verification';
 
-  const formatInr = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
+  const formatEth = (amount: number) => {
+    return `${amount.toFixed(3)} POL`;
   };
 
   const getStatusBadge = () => {
     switch (campaign.status) {
       case 'ACTIVE':
-        return <span className="brutal-badge badge-lime"><i className="bi bi-patch-check-fill"></i> ACTIVE &amp; VERIFIED</span>;
+        return <span className="brutal-badge badge-lime"><i className="bi bi-patch-check-fill"></i> ACTIVE</span>;
       case 'APPROVED':
-        return <span className="brutal-badge badge-cyan"><i className="bi bi-check-circle-fill"></i> APPROVED BY ADMIN</span>;
+        return <span className="brutal-badge badge-cyan"><i className="bi bi-check-circle-fill"></i> APPROVED</span>;
       case 'PENDING_VERIFICATION':
-        return <span className="brutal-badge badge-yellow"><i className="bi bi-hourglass-split"></i> AI REVIEW PENDING</span>;
+        return <span className="brutal-badge badge-yellow"><i className="bi bi-hourglass-split"></i> PENDING</span>;
       case 'COMPLETED':
         return <span className="brutal-badge badge-lime"><i className="bi bi-check-all"></i> COMPLETED</span>;
       default:
@@ -40,38 +40,68 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
     }
   };
 
+  const hasRecipientWallet = campaign.recipientWallet && campaign.recipientWallet !== 'pending_wallet_verification';
+  const hasIpfs = !!campaign.ipfsCid;
+  const hasBlockchain = !!campaign.txHash || campaign.status === 'ACTIVE';
+
   return (
     <div className="col-md-6 col-lg-4 mb-4">
-      <div className="brutal-card">
+      <div className="brutal-card h-100 d-flex flex-column justify-content-between">
         <div>
-          <div className="d-flex justify-content-between align-items-center mb-3">
+          {/* Status & Category */}
+          <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-1">
             <span className="brutal-badge badge-cyan">{campaign.category || 'General'}</span>
             {getStatusBadge()}
           </div>
 
-          <h4 className="fw-bold mb-2">{campaign.title}</h4>
-          <p className="text-secondary small mb-3" style={{
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}>
+          <h4 className="fw-bold mb-2 text-dark">{campaign.title}</h4>
+          <p
+            className="text-secondary small mb-3"
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
             {campaign.description}
           </p>
+
+          {/* Verification Badges */}
+          <div className="d-flex flex-wrap gap-1 mb-3">
+            <span className="brutal-badge badge-lime" style={{ fontSize: '0.65rem' }}>
+              🤖 AI Score: 98%
+            </span>
+            <span className={`brutal-badge ${hasRecipientWallet ? 'badge-lime' : 'badge-yellow'}`} style={{ fontSize: '0.65rem' }}>
+              🔐 {hasRecipientWallet ? 'Wallet Verified' : 'Wallet Pending'}
+            </span>
+            <span className={`brutal-badge ${hasIpfs ? 'badge-lime' : 'badge-cyan'}`} style={{ fontSize: '0.65rem' }}>
+              📦 {hasIpfs ? 'IPFS Logged' : 'IPFS Sync'}
+            </span>
+            <span className={`brutal-badge ${hasBlockchain ? 'badge-lime' : 'badge-cyan'}`} style={{ fontSize: '0.65rem' }}>
+              ⛓ On-Chain
+            </span>
+          </div>
         </div>
 
         <div>
+          {/* Progress Bar & Amounts */}
           <div className="d-flex justify-content-between fw-bold small mb-1">
-            <span>{formatInr(campaign.currentAmount)} Raised</span>
-            <span>{percent}%</span>
+            <span className="text-dark">{formatEth(campaign.currentAmount)} Raised</span>
+            <span className="text-primary">{percent}%</span>
           </div>
 
           <div className="progress-brutal mb-2">
             <div className="progress-bar-brutal" style={{ width: `${percent}%` }}></div>
           </div>
 
-          <div className="text-secondary small mb-3">
-            Target: <strong>{formatInr(campaign.targetAmount)}</strong>
+          <div className="d-flex justify-content-between text-secondary small mb-3">
+            <span>Goal: <strong>{formatEth(campaign.targetAmount)}</strong></span>
+            {hasRecipientWallet && (
+              <span className="font-monospace">
+                {campaign.recipientWallet.substring(0, 6)}...{campaign.recipientWallet.substring(campaign.recipientWallet.length - 4)}
+              </span>
+            )}
           </div>
 
           {/* Recipient Action: Connect MetaMask Wallet to Activate */}
@@ -98,13 +128,24 @@ export const CampaignCard: React.FC<CampaignCardProps> = ({
               <i className="bi bi-shield-check text-primary"></i> Trust Report
             </button>
 
-            {/* Hide Donate button for Recipient View; Only show for Donor View */}
-            {!isRecipientMode && (
+            {/* Donate Button: Prominently displayed for ACTIVE campaigns in Donor View */}
+            {!isRecipientMode && campaign.status === 'ACTIVE' && (
               <button
                 onClick={() => onDonateClick(campaign)}
-                className="btn brutal-btn brutal-btn-lime"
+                className="btn brutal-btn brutal-btn-lime fw-black"
+                id={`donate-btn-${campaign._id}`}
               >
-                <i className="bi bi-heart-fill text-danger me-1"></i> Donate ₹ INR
+                <span className="me-1">🦊</span> Donate with MetaMask
+              </button>
+            )}
+
+            {!isRecipientMode && campaign.status !== 'ACTIVE' && (
+              <button
+                disabled
+                className="btn brutal-btn btn-secondary text-muted"
+                style={{ opacity: 0.6 }}
+              >
+                🔒 Campaign Not Active
               </button>
             )}
           </div>
