@@ -68,12 +68,16 @@ export class AdminService {
   }
 
   /**
-   * Get all pending campaigns and verifications for admin review
+   * Get pending campaigns and verifications for admin review.
+   * Default behavior: Returns only items requiring audit (PENDING_VERIFICATION, DRAFT, PENDING).
+   * Once approved, items move to APPROVED/ACTIVE and are removed from pending list.
    */
   public async getPendingCampaigns(statusFilter?: string) {
     const queryFilter: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
       queryFilter.status = statusFilter;
+    } else if (!statusFilter) {
+      queryFilter.status = { $in: ['PENDING_VERIFICATION', 'DRAFT', 'PENDING'] };
     }
 
     const verifications = await Verification.find(queryFilter)
@@ -84,6 +88,8 @@ export class AdminService {
     const campaignFilter: any = {};
     if (statusFilter && statusFilter !== 'ALL') {
       campaignFilter.status = statusFilter;
+    } else if (!statusFilter) {
+      campaignFilter.status = { $in: ['PENDING_VERIFICATION', 'DRAFT'] };
     }
 
     const campaigns = await Campaign.find(campaignFilter)
@@ -143,7 +149,7 @@ export class AdminService {
   }
 
   /**
-   * Approve a campaign verification & update recipient user verification flags
+   * Approve a campaign verification & update recipient user verification flags in MongoDB
    */
   public async approveCampaign(campaignId: string, notes?: string, reviewer?: string) {
     const campaign = await Campaign.findById(campaignId);
@@ -151,7 +157,8 @@ export class AdminService {
       throw new Error('Campaign not found');
     }
 
-    campaign.status = 'ACTIVE';
+    // Set campaign status to APPROVED so recipient sees "Approved by Admin" and can verify MetaMask
+    campaign.status = 'APPROVED';
     await campaign.save();
 
     await Verification.updateMany(
@@ -159,7 +166,7 @@ export class AdminService {
       { status: 'APPROVED', reviewNotes: notes || 'Approved by Admin', reviewedBy: reviewer }
     );
 
-    // Update Recipient User verification status in MongoDB
+    // Update Recipient User verification status in MongoDB Atlas
     if (campaign.userId) {
       await User.findByIdAndUpdate(campaign.userId, {
         isVerified: true,

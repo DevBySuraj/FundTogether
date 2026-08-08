@@ -8,7 +8,7 @@ export const AdminPendingPage: React.FC = () => {
   const [list, setList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('PENDING_VERIFICATION');
   const [riskFilter, setRiskFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
@@ -103,7 +103,17 @@ export const AdminPendingPage: React.FC = () => {
       itemWallet.toLowerCase().includes(searchTerm.toLowerCase());
 
     const itemStatus = item.status || 'PENDING_VERIFICATION';
-    const matchesStatus = statusFilter === 'ALL' || itemStatus === statusFilter;
+
+    let matchesStatus = false;
+    if (statusFilter === 'PENDING_VERIFICATION') {
+      matchesStatus = itemStatus === 'PENDING_VERIFICATION' || itemStatus === 'DRAFT' || itemStatus === 'PENDING';
+    } else if (statusFilter === 'APPROVED') {
+      matchesStatus = itemStatus === 'APPROVED' || itemStatus === 'ACTIVE';
+    } else if (statusFilter === 'ALL') {
+      matchesStatus = true;
+    } else {
+      matchesStatus = itemStatus === statusFilter;
+    }
 
     const itemRisk = item.risk || 'Low';
     const matchesRisk = riskFilter === 'ALL' || itemRisk === riskFilter;
@@ -161,7 +171,7 @@ export const AdminPendingPage: React.FC = () => {
         <div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span>Pending Verifications Audit</span>
-            <span className="admin-badge admin-badge-warning">{filteredList.length} Items</span>
+            <span className="admin-badge admin-badge-warning">{filteredList.length} Items Pending</span>
           </h2>
           <p className="admin-subtext" style={{ marginTop: '4px' }}>
             Audit Gemini AI document OCR confidence, verify medical invoices, and approve on-chain campaigns.
@@ -193,11 +203,10 @@ export const AdminPendingPage: React.FC = () => {
             className="admin-input"
             style={{ width: '100%', paddingLeft: '38px' }}
           >
-            <option value="ALL">All Statuses</option>
-            <option value="DRAFT">DRAFT</option>
-            <option value="PENDING_VERIFICATION">PENDING VERIFICATION</option>
-            <option value="APPROVED">APPROVED / ACTIVE</option>
-            <option value="REJECTED">REJECTED</option>
+            <option value="PENDING_VERIFICATION">Only Pending Verifications</option>
+            <option value="APPROVED">Approved &amp; Active Campaigns</option>
+            <option value="REJECTED">Rejected Campaigns</option>
+            <option value="ALL">Show All Statuses</option>
           </select>
         </div>
 
@@ -227,8 +236,8 @@ export const AdminPendingPage: React.FC = () => {
       ) : filteredList.length === 0 ? (
         <div className="admin-card" style={{ padding: '4rem', textAlign: 'center' }}>
           <CheckCircle size={48} style={{ color: '#10b981', margin: '0 auto 1rem d-block', opacity: 0.8 }} />
-          <h3 style={{ color: '#fff', fontWeight: 800, marginBottom: '0.5rem' }}>No Pending Verifications Match Filters</h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>All campaigns have been processed or no submissions fit the selected criteria.</p>
+          <h3 style={{ color: '#fff', fontWeight: 800, marginBottom: '0.5rem' }}>No Pending Verifications Requiring Audit</h3>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>All submitted campaigns have been audited and approved or rejected by Admin.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
