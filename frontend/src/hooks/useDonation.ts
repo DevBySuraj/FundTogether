@@ -109,8 +109,14 @@ export const useDonation = (): UseDonationReturn => {
             txHash = tx.hash;
           } else {
             const recipientWallet = campaign.recipientWallet;
-            if (!recipientWallet || recipientWallet === 'pending_wallet_verification') {
-              setStep('error', { error: 'Recipient wallet not verified. Donation cannot proceed.' });
+            if (
+              !recipientWallet ||
+              recipientWallet === 'pending_wallet_verification' ||
+              !ethers.isAddress(recipientWallet)
+            ) {
+              setStep('error', {
+                error: `Recipient wallet address (${recipientWallet || 'none'}) is invalid or not verified yet. Recipient must connect MetaMask first.`,
+              });
               return;
             }
             const valueWei = ethers.parseEther(amountEth);
@@ -174,10 +180,12 @@ export const useDonation = (): UseDonationReturn => {
         console.error('[useDonation] error details:', {
           code: err?.code,
           message: err?.message,
+          shortMessage: err?.shortMessage,
+          reason: err?.reason,
           error: err,
         });
 
-        let userMessage = 'An unexpected error occurred during the donation.';
+        let userMessage = err?.shortMessage || err?.reason || err?.message || 'An unexpected error occurred during the donation.';
 
         if (err?.code === 4001 || err?.code === 'ACTION_REJECTED' || err?.message?.includes('rejected')) {
           userMessage = 'Transaction rejected. You cancelled the MetaMask prompt.';
@@ -187,19 +195,10 @@ export const useDonation = (): UseDonationReturn => {
           err?.message?.includes('exceeds balance')
         ) {
           userMessage = 'Insufficient balance in your wallet for this donation. Get free POL testnet tokens at faucet.polygon.technology.';
-        } else if (
-          err?.code === -32002 ||
-          err?.message?.includes('too many errors') ||
-          err?.message?.includes('rate limit') ||
-          err?.message?.includes('coalesce')
-        ) {
-          userMessage = 'The public Polygon Amoy network node is experiencing high traffic. If you approved in MetaMask, your transaction was sent — check amoy.polygonscan.com with your wallet address.';
         } else if (err?.code === 'NETWORK_ERROR') {
           userMessage = 'Network error. Please check your internet connection and try again.';
         } else if (err?.code === 'CALL_EXCEPTION') {
           userMessage = 'Smart contract execution failed. The transaction was reverted.';
-        } else if (err?.message) {
-          userMessage = err.message;
         }
 
         setStep('error', { error: userMessage });
