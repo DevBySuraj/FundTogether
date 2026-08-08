@@ -28,10 +28,13 @@ export const WalletActivityPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalRecords, setTotalRecords] = useState<number>(0);
 
-  // Selected Transaction Modal State
+  // Single Transaction Modal State
   const [selectedTxHash, setSelectedTxHash] = useState<string | null>(null);
   const [txDetails, setTxDetails] = useState<WalletTransactionDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState<boolean>(false);
+
+  // Full Master Report Modal State
+  const [isMasterReportOpen, setIsMasterReportOpen] = useState<boolean>(false);
 
   // Fetch Activity Data
   const fetchActivity = useCallback(async () => {
@@ -96,6 +99,32 @@ export const WalletActivityPage: React.FC = () => {
     setRecords([]);
     setTotalRecords(0);
     setTotalPages(1);
+  };
+
+  // Export CSV Helper
+  const handleDownloadCSV = () => {
+    if (records.length === 0) return;
+    const headers = ['Timestamp', 'TxHash', 'Campaign', 'Category', 'DonorWallet', 'RecipientWallet', 'AmountPOL', 'BlockNumber', 'Status', 'IPFSCID'];
+    const rows = records.map((r) => [
+      new Date(r.timestamp).toISOString(),
+      r.txHash,
+      `"${(r.campaignTitle || '').replace(/"/g, '""')}"`,
+      r.category,
+      r.rawDonorWallet || r.donorWallet,
+      r.recipientWallet,
+      r.amountEth,
+      r.blockNumber,
+      r.status,
+      r.ipfsCid || 'N/A',
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `TrustChain_Master_Audit_Report_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getRoleHeaderInfo = () => {
@@ -170,6 +199,9 @@ export const WalletActivityPage: React.FC = () => {
 
   const roleInfo = getRoleHeaderInfo();
 
+  // Compute Total Master Volume
+  const masterVolume = records.reduce((sum, r) => sum + (r.amountNum || 0), 0);
+
   return (
     <div className="container py-4">
       {/* ── Page Header Banner ───────────────────────────────────────── */}
@@ -184,18 +216,22 @@ export const WalletActivityPage: React.FC = () => {
               <span className="brutal-badge badge-cyan fs-6">Polygon Amoy Testnet</span>
             </div>
             <h2 className="fw-black text-uppercase mb-1">
-              🪙 Wallet Activity & Blockchain Audit
+              🪙 Wallet Activity &amp; Blockchain Audit
             </h2>
             <p className="text-secondary fw-bold small mb-0">{roleInfo.subtitle}</p>
           </div>
 
-          <div className="text-end">
-            <code className="fw-bold text-dark d-block mb-1">
+          <div className="d-flex flex-column align-items-end gap-2">
+            <button
+              onClick={() => setIsMasterReportOpen(true)}
+              className="btn brutal-btn brutal-btn-lime fw-black"
+              title="Generate Consolidated Master Audit Report for All Transactions"
+            >
+              <i className="bi bi-file-earmark-bar-graph-fill me-1"></i> 📊 Master Audit Report
+            </button>
+            <code className="fw-bold text-dark small">
               {account ? `${account.substring(0, 6)}...${account.substring(account.length - 4)}` : user?.email || 'Authenticated Session'}
             </code>
-            <span className="small text-secondary fw-bold">
-              Role Permission Scope: <span className="text-uppercase text-dark fw-black">{role}</span>
-            </span>
           </div>
         </div>
       </div>
@@ -303,7 +339,15 @@ export const WalletActivityPage: React.FC = () => {
             <i className="bi bi-list-task me-2"></i>
             Blockchain Transaction Log ({totalRecords})
           </h5>
-          <span className="small text-secondary fw-bold">Page {page} of {totalPages}</span>
+          <div className="d-flex align-items-center gap-2">
+            <button
+              onClick={() => setIsMasterReportOpen(true)}
+              className="btn brutal-btn brutal-btn-yellow btn-sm fw-bold"
+            >
+              📊 Export Master Report
+            </button>
+            <span className="small text-secondary fw-bold">Page {page} of {totalPages}</span>
+          </div>
         </div>
 
         {isLoading ? (
@@ -321,9 +365,12 @@ export const WalletActivityPage: React.FC = () => {
           <div className="p-5 text-center">
             <i className="bi bi-inbox-fill text-secondary fs-1 mb-2"></i>
             <h5 className="fw-bold mb-1">No Wallet Activity Records Found</h5>
-            <p className="text-secondary small mb-0">
-              No transactions match your current search filters or authorized role permissions.
+            <p className="text-secondary small mb-2">
+              Click Reload to fetch current platform transactions from MongoDB Atlas.
             </p>
+            <button onClick={fetchActivity} className="btn brutal-btn brutal-btn-lime btn-sm fw-bold">
+              <i className="bi bi-arrow-clockwise me-1"></i> Reload Activity Log
+            </button>
           </div>
         ) : (
           <div className="table-responsive">
@@ -440,7 +487,7 @@ export const WalletActivityPage: React.FC = () => {
         )}
       </div>
 
-      {/* ── Transaction Details Modal ───────────────────────────────────── */}
+      {/* ── Single Transaction Details Modal ────────────────────────────── */}
       {selectedTxHash && (
         <div className="modal-overlay" onClick={() => setSelectedTxHash(null)}>
           <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
@@ -561,6 +608,149 @@ export const WalletActivityPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONSOLIDATED MASTER TRANSACTIONS AUDIT REPORT MODAL ─────────── */}
+      {isMasterReportOpen && (
+        <div className="modal-overlay" onClick={() => setIsMasterReportOpen(false)}>
+          <div className="modal-dialog modal-dialog-centered modal-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content brutal-modal p-0">
+              {/* Header */}
+              <div className="modal-header d-flex justify-content-between align-items-center bg-dark text-white p-3">
+                <div className="d-flex align-items-center gap-2">
+                  <span className="fs-4">📊</span>
+                  <div>
+                    <h4 className="modal-title fw-black text-uppercase mb-0 text-white">
+                      FundTogether Master Transaction Audit Report
+                    </h4>
+                    <small className="text-warning fw-bold">
+                      Cryptographic On-Chain Audit &amp; Platform Ledger Summary
+                    </small>
+                  </div>
+                </div>
+                <button className="btn-close btn-close-white" onClick={() => setIsMasterReportOpen(false)}></button>
+              </div>
+
+              {/* Body */}
+              <div className="modal-body p-4 bg-white">
+                {/* Summary Banner Box */}
+                <div className="brutal-card p-3 bg-light mb-4">
+                  <div className="row g-3 text-center">
+                    <div className="col-6 col-md-3">
+                      <small className="text-secondary fw-bold text-uppercase d-block">Report Scope</small>
+                      <span className="fw-black fs-5 text-dark text-uppercase">{role} Scope</span>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <small className="text-secondary fw-bold text-uppercase d-block">Total Logged Tx</small>
+                      <span className="fw-black fs-5 text-primary">{records.length} Records</span>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <small className="text-secondary fw-bold text-uppercase d-block">Total Volume</small>
+                      <span className="fw-black fs-5 text-success">{masterVolume.toFixed(4)} POL</span>
+                    </div>
+                    <div className="col-6 col-md-3">
+                      <small className="text-secondary fw-bold text-uppercase d-block">Network Node</small>
+                      <span className="fw-black fs-6 text-dark">Polygon Amoy (80002)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Master Audit Log Table */}
+                <div className="table-responsive brutal-card p-0 mb-4">
+                  <table className="table table-striped table-hover align-middle mb-0 small">
+                    <thead className="table-dark text-uppercase">
+                      <tr>
+                        <th>#</th>
+                        <th>Timestamp</th>
+                        <th>Tx Hash</th>
+                        <th>Campaign Title</th>
+                        <th>Donor Wallet</th>
+                        <th>Recipient Wallet</th>
+                        <th>Amount</th>
+                        <th>Block</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="text-center py-4 fw-bold text-secondary">
+                            No active records in current view.
+                          </td>
+                        </tr>
+                      ) : (
+                        records.map((r, index) => (
+                          <tr key={r.id || r.txHash}>
+                            <td className="fw-bold">{index + 1}</td>
+                            <td>{new Date(r.timestamp).toLocaleString()}</td>
+                            <td>
+                              <code className="fw-bold text-primary">{r.txHash.substring(0, 10)}...</code>
+                            </td>
+                            <td className="fw-bold text-dark">{r.campaignTitle}</td>
+                            <td>
+                              <code>{r.donorWallet}</code>
+                            </td>
+                            <td>
+                              <code>{r.recipientWallet ? `${r.recipientWallet.substring(0, 6)}...` : 'N/A'}</code>
+                            </td>
+                            <td className="fw-black text-success">{r.amountDisplay}</td>
+                            <td className="fw-bold font-monospace">#{r.blockNumber}</td>
+                            <td>
+                              <span className="brutal-badge badge-lime">{r.status}</span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Cryptographic Compliance Seal */}
+                <div className="p-3 border border-2 border-dark bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <div className="d-flex align-items-center gap-2">
+                    <i className="bi bi-shield-lock-fill text-success fs-3"></i>
+                    <div>
+                      <small className="fw-black text-uppercase d-block text-dark">
+                        TrustChain Cryptographic Compliance Verification
+                      </small>
+                      <small className="text-secondary">
+                        All transaction records are verified on Polygon Amoy blockchain &amp; indexed in MongoDB Atlas.
+                      </small>
+                    </div>
+                  </div>
+                  <span className="font-monospace small fw-bold text-secondary">
+                    Generated: {new Date().toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer bg-light p-3 d-flex justify-content-between align-items-center">
+                <span className="small text-secondary fw-bold">
+                  FundTogether · Decentralized Transparency &amp; Audit Engine
+                </span>
+                <div className="d-flex gap-2">
+                  <button className="btn brutal-btn" onClick={() => setIsMasterReportOpen(false)}>
+                    Close
+                  </button>
+                  <button
+                    className="btn brutal-btn brutal-btn-yellow fw-bold"
+                    onClick={handleDownloadCSV}
+                    disabled={records.length === 0}
+                  >
+                    <i className="bi bi-download me-1"></i> Download CSV Log
+                  </button>
+                  <button
+                    className="btn brutal-btn brutal-btn-lime fw-black"
+                    onClick={() => window.print()}
+                  >
+                    <i className="bi bi-printer me-1"></i> Print Master Report
+                  </button>
+                </div>
               </div>
             </div>
           </div>
