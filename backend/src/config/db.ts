@@ -28,12 +28,14 @@ export const connectDB = async (): Promise<typeof mongoose | null> => {
     return mongoose;
   }
 
-  const primaryUri = env.mongoUri || 'mongodb://127.0.0.1:27017/fundtogether';
-  const localFallbackUri = 'mongodb://127.0.0.1:27017/fundtogether';
-  const isAtlas = primaryUri.includes('mongodb+srv') || primaryUri.includes('mongodb.net');
-  const isProd = env.nodeEnv === 'production' || process.env.NODE_ENV === 'production';
+  const primaryUri = env.mongoUri;
+  if (!primaryUri) {
+    logger.error('[MongoDB Error] MONGODB_URI environment variable is missing.');
+    return null;
+  }
 
-  logger.info(`[MongoDB] Connecting to ${isAtlas ? 'MongoDB Atlas Cloud Database' : 'Database'}...`);
+  const isAtlas = primaryUri.includes('mongodb+srv') || primaryUri.includes('mongodb.net');
+  logger.info(`[MongoDB] Connecting to ${isAtlas ? 'MongoDB Atlas Cloud Database' : 'MongoDB Database'}...`);
 
   try {
     const conn = await mongoose.connect(primaryUri, {
@@ -45,12 +47,12 @@ export const connectDB = async (): Promise<typeof mongoose | null> => {
     await syncCollectionIndexes();
     return conn;
   } catch (primaryErr: any) {
-    logger.warn(`[MongoDB Primary Error]: ${primaryErr.message}`);
+    logger.error(`[MongoDB Atlas Primary Error]: ${primaryErr.message}`);
 
-    // If Atlas primary connection failed (e.g. DNS SRV failure or IP block), attempt Google DNS lookup retry
+    // If Atlas primary connection failed due to Windows DNS SRV lookup failure, retry via Google DNS (8.8.8.8)
     if (isAtlas && primaryErr.message?.includes('querySrv')) {
       try {
-        logger.info('[MongoDB] Retrying SRV DNS lookup via Google DNS (8.8.8.8)...');
+        logger.info('[MongoDB] Retrying SRV DNS lookup via Google Public DNS (8.8.8.8)...');
         dns.setServers(['8.8.8.8', '1.1.1.1']);
         const conn = await mongoose.connect(primaryUri, {
           autoIndex: true,
@@ -60,25 +62,18 @@ export const connectDB = async (): Promise<typeof mongoose | null> => {
         await syncCollectionIndexes();
         return conn;
       } catch (dnsErr: any) {
-        logger.warn(`[MongoDB Google DNS Error]: ${dnsErr.message}`);
+        logger.error(`[MongoDB Google DNS Retry Error]: ${dnsErr.message}`);
       }
     }
 
-    // Only fallback to local MongoDB if NOT in production cloud environment
-    if (isAtlas && !isProd) {
-      try {
-        logger.info('[MongoDB Fallback] Connecting to local MongoDB instance (mongodb://127.0.0.1:27017/fundtogether)...');
-        const conn = await mongoose.connect(localFallbackUri, {
-          autoIndex: true,
-          serverSelectionTimeoutMS: 3000,
-        });
-        logger.info(`[MongoDB Fallback] Connected successfully to local host: ${conn.connection.host}`);
-        await syncCollectionIndexes();
-        return conn;
-      } catch (fallbackErr: any) {
-        logger.error('[MongoDB Fallback Error]: Could not connect to local MongoDB either.', fallbackErr.message);
-      }
-    }
+    logger.error('========================================================================================');
+    logger.error('❌ [MongoDB Atlas Connection Failure]: Could not establish connection to MongoDB Cloud Database.');
+    logger.error('👉 Please verify:');
+    logger.error('   1. Your MONGODB_URI connection string in backend/.env is correct.');
+    logger.error('   2. Your IP Address is allowed in MongoDB Atlas → Network Access (0.0.0.0/0).');
+    logger.error('   3. Local database fallback is DISABLED.');
+    logger.error('========================================================================================');
+
     return null;
   }
 };
