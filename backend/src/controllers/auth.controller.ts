@@ -7,13 +7,88 @@ import { generateJwt } from '../utils/jwt';
 
 export class AuthController {
   /**
+   * @route POST /auth/register
+   * @desc Register user with email and password (Recipient or Donor only)
+   */
+  public register = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { name, email, password, role } = req.body;
+
+      if (!name || !email || !password) {
+        return sendError(res, 'Name, email, and password are required fields', 400);
+      }
+
+      const result = await authService.register({
+        name,
+        email,
+        password,
+        role,
+      });
+
+      return sendSuccess(res, result, 'User registered successfully', 201);
+    } catch (err: any) {
+      console.error('Registration controller error:', err.message);
+      return sendError(res, err.message || 'Registration failed', 400);
+    }
+  };
+
+  /**
+   * @route POST /auth/login
+   * @desc Login user with email and password
+   */
+  public login = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return sendError(res, 'Invalid email or password', 401);
+      }
+
+      const result = await authService.login({
+        email,
+        password,
+      });
+
+      return sendSuccess(res, result, 'Login successful', 200);
+    } catch (err: any) {
+      console.error('Login controller error:', err.message);
+      // Return 401 with generic error to prevent user enumeration
+      return sendError(res, 'Invalid email or password', 401);
+    }
+  };
+
+  /**
+   * @route POST /auth/set-password
+   * @desc Set password for existing authenticated user (e.g. Google-only user adding email/pass login)
+   */
+  public setPassword = async (req: AuthenticatedRequest, res: Response): Promise<Response> => {
+    try {
+      const userId = req.user?.id || req.user?.userId;
+      const { password } = req.body;
+
+      if (!userId) {
+        return sendError(res, 'Unauthorized request', 401);
+      }
+      if (!password || password.length < 6) {
+        return sendError(res, 'Password must be at least 6 characters long', 400);
+      }
+
+      const result = await authService.setPassword(userId, password);
+
+      return sendSuccess(res, result, 'Password set successfully', 200);
+    } catch (err: any) {
+      console.error('Set password controller error:', err.message);
+      return sendError(res, err.message || 'Failed to set password', 400);
+    }
+  };
+
+  /**
    * @route POST /auth/google
    * @desc Verify Google OAuth ID Token and issue JWT session
    */
   public googleLogin = async (req: Request, res: Response): Promise<Response> => {
     try {
       const { credential, idToken, token, role } = req.body;
-
       const tokenToVerify = idToken || credential || token;
 
       if (!tokenToVerify) {
@@ -91,11 +166,13 @@ export class AuthController {
           walletVerified: true,
           isVerified: true,
           walletVerifiedAt: new Date(),
+          lastLoginAt: new Date(),
         });
       } else {
         user.walletVerified = true;
         user.isVerified = true;
         user.walletVerifiedAt = new Date();
+        user.lastLoginAt = new Date();
         await user.save();
       }
 
@@ -107,56 +184,6 @@ export class AuthController {
       });
 
       return sendSuccess(res, { token, user }, 'MetaMask wallet login & verification successful', 200);
-    } catch (err: any) {
-      return sendError(res, err.message, 500);
-    }
-  };
-
-  /**
-   * Register endpoint
-   */
-  public register = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      const { email, role, name } = req.body;
-      const targetRole = role || 'donor';
-      let user = await User.findOne({ email });
-      if (!user) {
-        user = await User.create({
-          email,
-          name,
-          role: targetRole,
-        });
-      }
-      const token = generateJwt({
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role,
-      });
-      return sendSuccess(res, { token, user }, 'User registered', 201);
-    } catch (err: any) {
-      return sendError(res, err.message, 500);
-    }
-  };
-
-  /**
-   * Login endpoint
-   */
-  public login = async (req: Request, res: Response): Promise<Response> => {
-    try {
-      const { email, role } = req.body;
-      let user = await User.findOne({ email });
-      if (!user) {
-        user = await User.create({
-          email,
-          role: role || 'donor',
-        });
-      }
-      const token = generateJwt({
-        id: user._id.toString(),
-        email: user.email,
-        role: user.role,
-      });
-      return sendSuccess(res, { token, user }, 'Login successful', 200);
     } catch (err: any) {
       return sendError(res, err.message, 500);
     }

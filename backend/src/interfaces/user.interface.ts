@@ -16,6 +16,7 @@ export interface IUser extends MongooseDocument {
   nonce?: string;
   password?: string;
   isVerified?: boolean;
+  lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

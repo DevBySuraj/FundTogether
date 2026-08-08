@@ -59,6 +59,9 @@ const UserSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    lastLoginAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
