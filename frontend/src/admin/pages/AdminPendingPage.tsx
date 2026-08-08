@@ -31,9 +31,11 @@ export const AdminPendingPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await adminService.getPending(statusFilter, riskFilter);
-      setList(res.data || []);
+      const rawList = Array.isArray(res) ? res : Array.isArray(res.data) ? res.data : Array.isArray(res.data?.data) ? res.data.data : [];
+      setList(rawList);
     } catch (err) {
       console.error('Failed to fetch pending campaigns:', err);
+      setList([]);
     } finally {
       setIsLoading(false);
     }
@@ -67,267 +69,294 @@ export const AdminPendingPage: React.FC = () => {
   };
 
   // Search & Filtered list
-  const filteredList = list.filter((item) => {
-    const title = item.campaignId?.title || item.title || 'Medical Campaign';
-    const recipient = item.campaignId?.recipientWallet || item.recipientWallet || '';
-    const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) || recipient.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRisk = riskFilter === 'ALL' || (item.risk || 'Low') === riskFilter;
-    return matchesSearch && matchesRisk;
+  const filteredList = (Array.isArray(list) ? list : []).filter((item) => {
+    const itemTitle = item.title || item.campaignId?.title || '';
+    const itemCategory = item.category || item.campaignId?.category || '';
+    const itemWallet = item.recipientWallet || item.campaignId?.recipientWallet || '';
+
+    const matchesSearch =
+      itemTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      itemCategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      itemWallet.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const itemStatus = item.status || 'PENDING_VERIFICATION';
+    const matchesStatus = statusFilter === 'ALL' || itemStatus === statusFilter;
+
+    const itemRisk = item.risk || 'Low';
+    const matchesRisk = riskFilter === 'ALL' || itemRisk === riskFilter;
+
+    return matchesSearch && matchesStatus && matchesRisk;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredList.length / itemsPerPage) || 1;
+  const totalPages = Math.ceil(filteredList.length / itemsPerPage);
   const paginatedList = filteredList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div className="d-flex flex-column gap-4">
+    <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="alert alert-info admin-card text-white fw-bold d-flex align-items-center justify-content-between mb-0">
-          <div className="d-flex align-items-center gap-2">
-            <CheckCircle size={18} color="#10b981" />
-            <span>{toastMessage}</span>
-          </div>
-          <button className="btn-close btn-close-white" onClick={() => setToastMessage(null)}></button>
+        <div className="fixed top-6 right-6 z-50 bg-slate-900 text-emerald-400 border border-emerald-500/50 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3 text-sm font-semibold animate-bounce">
+          <CheckCircle className="w-5 h-5 text-emerald-400" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Control Bar: Search & Filters */}
-      <div className="admin-card p-3 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800">
+        <div>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <span>Pending Verifications Audit</span>
+            <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold px-2.5 py-1 rounded-full">
+              {filteredList.length} Items
+            </span>
+          </h1>
+          <p className="text-slate-400 text-sm mt-1">
+            Audit Gemini AI document OCR confidence, verify medical invoices, and approve on-chain campaigns.
+          </p>
+        </div>
+      </div>
+
+      {/* Filter Controls */}
+      <div className="grid grid-[#0f172a] md:grid-cols-4 gap-4">
         {/* Search */}
-        <div className="position-relative flex-fill" style={{ maxWidth: '380px' }}>
-          <Search size={18} className="position-absolute" style={{ left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--admin-text-dim)' }} />
+        <div className="relative md:col-span-2">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
           <input
             type="text"
-            className="form-control admin-input w-100"
-            style={{ paddingLeft: '38px' }}
-            placeholder="Search by title or recipient wallet..."
+            placeholder="Search by title, category, or wallet..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-800 text-white placeholder-slate-500 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
 
-        {/* Filters */}
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <div className="d-flex align-items-center gap-2">
-            <Filter size={16} color="var(--admin-text-dim)" />
-            <span className="small font-monospace text-white-50 text-uppercase fw-bold">Status:</span>
-            <select className="form-select admin-input py-1" style={{ width: '130px' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="ALL">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-          </div>
+        {/* Status Filter */}
+        <div className="relative">
+          <Filter className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-800 text-slate-300 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 appearance-none"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="PENDING_VERIFICATION">PENDING VERIFICATION</option>
+            <option value="APPROVED">APPROVED / ACTIVE</option>
+            <option value="REJECTED">REJECTED</option>
+          </select>
+        </div>
 
-          <div className="d-flex align-items-center gap-2">
-            <span className="small font-monospace text-white-50 text-uppercase fw-bold">Risk:</span>
-            <select className="form-select admin-input py-1" style={{ width: '120px' }} value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}>
-              <option value="ALL">All Risk</option>
-              <option value="Low">Low Risk</option>
-              <option value="Medium">Medium Risk</option>
-              <option value="High">High Risk</option>
-            </select>
-          </div>
+        {/* Risk Filter */}
+        <div className="relative">
+          <AlertTriangle className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          <select
+            value={riskFilter}
+            onChange={(e) => setRiskFilter(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-800 text-slate-300 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:border-blue-500 appearance-none"
+          >
+            <option value="ALL">All Risk Levels</option>
+            <option value="Low">Low Risk (&gt;90% Confidence)</option>
+            <option value="Medium">Medium Risk (75%-90%)</option>
+            <option value="High">High Risk (&lt;75%)</option>
+          </select>
         </div>
       </div>
 
-      {/* Table Container */}
-      <div className="admin-card overflow-hidden">
-        <div className="admin-table-container">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Campaign</th>
-                <th>Recipient Wallet</th>
-                <th>Submitted Date</th>
-                <th>AI Confidence</th>
-                <th>Risk Level</th>
-                <th>Goal Amount</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-5">
-                    <div className="spinner-border text-primary me-2"></div>
-                    <span className="fw-bold text-white-50">Loading verifications data...</span>
-                  </td>
-                </tr>
-              ) : paginatedList.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-5 text-white-50">
-                    No verification records found matching current filter criteria.
-                  </td>
-                </tr>
-              ) : (
-                paginatedList.map((item) => {
-                  const campaignObj = item.campaignId || {};
-                  const title = campaignObj.title || item.title || 'Medical Emergency Fundraiser';
-                  const campaignId = campaignObj._id || item._id;
-                  const wallet = campaignObj.recipientWallet || item.recipientWallet || '0x71c7...976f';
-                  const createdDate = new Date(item.createdAt || Date.now()).toLocaleDateString();
-                  const confidence = item.confidence || 94;
-                  const risk = item.risk || 'Low';
-                  const targetAmount = campaignObj.targetAmount || 100000;
-                  const status = item.status || campaignObj.status || 'PENDING';
-
-                  return (
-                    <tr key={item._id}>
-                      <td>
-                        <div className="fw-bold text-white mb-1" style={{ maxWidth: '220px' }}>
-                          {title}
-                        </div>
-                        <span className="small font-monospace" style={{ fontSize: '0.72rem', color: 'var(--admin-text-dim)' }}>
-                          ID: {campaignId.substring(0, 10)}...
-                        </span>
-                      </td>
-
-                      <td>
-                        <span className="font-monospace small text-info">
-                          {wallet.substring(0, 6)}...{wallet.substring(wallet.length - 4)}
-                        </span>
-                      </td>
-
-                      <td className="small text-white-50">{createdDate}</td>
-
-                      <td>
-                        <span className="fw-bold text-success fs-6">{confidence}%</span>
-                      </td>
-
-                      <td>
-                        <span className={`admin-badge ${risk === 'Low' ? 'admin-badge-success' : risk === 'High' ? 'admin-badge-danger' : 'admin-badge-warning'}`}>
-                          {risk}
-                        </span>
-                      </td>
-
-                      <td className="fw-bold text-white font-monospace">₹{targetAmount.toLocaleString('en-IN')}</td>
-
-                      <td>
-                        <span className={`admin-badge ${status === 'APPROVED' || status === 'ACTIVE' ? 'admin-badge-success' : status === 'REJECTED' ? 'admin-badge-danger' : 'admin-badge-warning'}`}>
-                          {status}
-                        </span>
-                      </td>
-
-                      <td className="text-end">
-                        <div className="d-flex align-items-center justify-content-end gap-1">
-                          <Link
-                            to={`/admin/campaign/${campaignId}`}
-                            className="admin-btn admin-btn-secondary p-1 px-2"
-                            title="View Campaign Details & Documents"
-                          >
-                            <Eye size={15} />
-                            <span className="d-none d-xl-inline">View</span>
-                          </Link>
-
-                          <button
-                            onClick={() => setModalAction({ type: 'approve', campaignId, title })}
-                            className="admin-btn admin-btn-success p-1 px-2"
-                            title="Approve Campaign Verification"
-                          >
-                            <CheckCircle size={15} />
-                            <span className="d-none d-xl-inline">Approve</span>
-                          </button>
-
-                          <button
-                            onClick={() => setModalAction({ type: 'reject', campaignId, title })}
-                            className="admin-btn admin-btn-danger p-1 px-2"
-                            title="Reject Campaign Verification"
-                          >
-                            <XCircle size={15} />
-                            <span className="d-none d-xl-inline">Reject</span>
-                          </button>
-
-                          <button
-                            onClick={() => setModalAction({ type: 'reupload', campaignId, title })}
-                            className="admin-btn admin-btn-warning p-1 px-2"
-                            title="Request Document Resubmission"
-                          >
-                            <RotateCcw size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Main List Grid */}
+      {isLoading ? (
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-400 font-medium">Fetching verification records from TrustChain backend...</p>
         </div>
-
-        {/* Pagination Footer */}
-        <div className="p-3 d-flex align-items-center justify-content-between border-top border-secondary border-opacity-10">
-          <small className="text-white-50" style={{ fontSize: '0.8rem' }}>
-            Showing Page {currentPage} of {totalPages} ({filteredList.length} total items)
-          </small>
-          <div className="d-flex gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="admin-btn admin-btn-secondary py-1 px-3"
-            >
-              Previous
-            </button>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="admin-btn admin-btn-secondary py-1 px-3"
-            >
-              Next
-            </button>
-          </div>
+      ) : filteredList.length === 0 ? (
+        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 text-center">
+          <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3 opacity-80" />
+          <h3 className="text-lg font-bold text-white mb-1">No Pending Verifications Match Filters</h3>
+          <p className="text-slate-400 text-sm">All campaigns have been processed or no submissions fit the selected criteria.</p>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedList.map((item) => {
+            const campaignId = item.campaignId?._id || item.campaignId || item._id;
+            const title = item.title || item.campaignId?.title || 'Medical Fundraiser Audit';
+            const category = item.category || item.campaignId?.category || 'Medical';
+            const confidence = item.confidence || 94;
+            const risk = item.risk || 'Low';
+            const summary = item.summary || item.description || 'Medical document invoice submitted for AI verification.';
+            const targetAmount = item.targetAmount || item.campaignId?.targetAmount || 100000;
+            const status = item.status || item.campaignId?.status || 'PENDING_VERIFICATION';
 
-      {/* Confirmation Modal */}
+            return (
+              <div
+                key={item._id}
+                className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 hover:border-slate-700 transition-all rounded-2xl p-6 flex flex-col justify-between shadow-xl"
+              >
+                <div>
+                  {/* Top Badges */}
+                  <div className="flex items-center justify-between gap-2 mb-4">
+                    <span className="text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-lg">
+                      {category}
+                    </span>
+
+                    <span
+                      className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                        risk === 'Low'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : risk === 'Medium'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                      }`}
+                    >
+                      {risk} Risk ({confidence}%)
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-1">{title}</h3>
+
+                  {/* Summary / Description */}
+                  <p className="text-slate-400 text-xs line-clamp-3 mb-4 leading-relaxed">{summary}</p>
+
+                  {/* Target Amount */}
+                  <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 mb-4">
+                    <div className="text-slate-500 text-[11px] font-semibold tracking-wider uppercase">Target Goal</div>
+                    <div className="text-white font-extrabold text-base">₹ {targetAmount.toLocaleString('en-IN')} INR</div>
+                  </div>
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span>Status:</span>
+                    <span className="font-bold text-white">{status}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link
+                      to={`/admin/campaign/${campaignId}`}
+                      className="inline-flex items-center justify-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 px-3 rounded-xl transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Inspect OCR</span>
+                    </Link>
+
+                    <button
+                      onClick={() =>
+                        setModalAction({
+                          type: 'approve',
+                          campaignId,
+                          title,
+                        })
+                      }
+                      className="inline-flex items-center justify-center space-x-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-3 rounded-xl transition-colors shadow-lg shadow-emerald-600/20"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Approve</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() =>
+                        setModalAction({
+                          type: 'reupload',
+                          campaignId,
+                          title,
+                        })
+                      }
+                      className="inline-flex items-center justify-center space-x-1 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 text-xs font-bold py-2 px-3 rounded-xl transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Re-upload</span>
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        setModalAction({
+                          type: 'reject',
+                          campaignId,
+                          title,
+                        })
+                      }
+                      className="inline-flex items-center justify-center space-x-1 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 text-xs font-bold py-2 px-3 rounded-xl transition-colors"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      <span>Reject</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 pt-4">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="text-xs text-slate-400 font-semibold px-2">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-300 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* Action Confirmation Modal */}
       {modalAction && (
-        <div className="admin-modal-overlay" onClick={() => setModalAction(null)}>
-          <div className="admin-modal p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="d-flex align-items-center gap-2 mb-3">
-              <AlertTriangle
-                size={24}
-                color={modalAction.type === 'approve' ? '#10b981' : modalAction.type === 'reject' ? '#ef4444' : '#f59e0b'}
-              />
-              <h5 className="fw-bold text-white mb-0">
-                Confirm {modalAction.type.toUpperCase()} Action
-              </h5>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+              {modalAction.type === 'approve' && <CheckCircle className="w-5 h-5 text-emerald-400" />}
+              {modalAction.type === 'reject' && <XCircle className="w-5 h-5 text-rose-400" />}
+              {modalAction.type === 'reupload' && <RotateCcw className="w-5 h-5 text-amber-400" />}
+              <span className="capitalize">{modalAction.type} Campaign Audit</span>
+            </h3>
 
-            <p className="small text-white-50 mb-3">
-              Are you sure you want to <strong>{modalAction.type}</strong> campaign:{' '}
-              <span className="text-white fw-bold">"{modalAction.title}"</span>?
+            <p className="text-sm text-slate-300">
+              Are you sure you want to {modalAction.type} campaign &quot;<strong>{modalAction.title}</strong>&quot;?
             </p>
 
-            <div className="mb-4">
-              <label className="form-label small text-uppercase fw-bold text-white-50">Audit Notes / Reason</label>
-              <textarea
-                className="form-control admin-input w-100"
-                rows={3}
-                placeholder="Enter audit notes or rejection justification..."
-                value={actionReason}
-                onChange={(e) => setActionReason(e.target.value)}
-              />
-            </div>
+            <textarea
+              rows={3}
+              placeholder="Enter audit notes / reason for audit log..."
+              value={actionReason}
+              onChange={(e) => setActionReason(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 text-white text-xs rounded-xl p-3 focus:outline-none focus:border-blue-500"
+            />
 
-            <div className="d-flex justify-content-end gap-2">
-              <button className="admin-btn admin-btn-secondary" onClick={() => setModalAction(null)} disabled={isSubmitting}>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setModalAction(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors"
+                disabled={isSubmitting}
+              >
                 Cancel
               </button>
               <button
-                className={`admin-btn ${modalAction.type === 'approve' ? 'admin-btn-success' : modalAction.type === 'reject' ? 'admin-btn-danger' : 'admin-btn-warning'}`}
                 onClick={handleExecuteAction}
                 disabled={isSubmitting}
+                className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-all ${
+                  modalAction.type === 'approve'
+                    ? 'bg-emerald-600 hover:bg-emerald-500'
+                    : modalAction.type === 'reject'
+                    ? 'bg-rose-600 hover:bg-rose-500'
+                    : 'bg-amber-600 hover:bg-amber-500'
+                }`}
               >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-1"></span>
-                    Executing...
-                  </>
-                ) : (
-                  `Confirm ${modalAction.type.toUpperCase()}`
-                )}
+                {isSubmitting ? 'Processing...' : 'Confirm Action'}
               </button>
             </div>
           </div>

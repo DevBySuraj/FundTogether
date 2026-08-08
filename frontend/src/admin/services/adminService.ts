@@ -1,9 +1,12 @@
 import axios from 'axios';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000';
+let rawBaseUrl = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:5000/api';
+if (!rawBaseUrl.endsWith('/api') && !rawBaseUrl.endsWith('/api/')) {
+  rawBaseUrl = rawBaseUrl.replace(/\/$/, '') + '/api';
+}
 
 const adminAxios = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: rawBaseUrl,
 });
 
 // Automatic JWT Authorization header & 401 redirect interceptor
@@ -68,13 +71,13 @@ export const adminService = {
       return res.data.data;
     } catch {
       // Fallback calculated stats from campaign APIs
-      const res = await adminAxios.get<{ data: any[] }>('/campaign/all');
-      const campaigns = res.data.data || [];
+      const res = await adminAxios.get('/campaign/all');
+      const campaigns = Array.isArray(res.data) ? res.data : (res.data?.data || []);
 
-      const pending = campaigns.filter(c => c.status === 'DRAFT' || c.status === 'PENDING_VERIFICATION').length;
-      const approved = campaigns.filter(c => c.status === 'ACTIVE' || c.status === 'COMPLETED').length;
-      const rejected = campaigns.filter(c => c.status === 'REJECTED').length;
-      const totalRaised = campaigns.reduce((acc, c) => acc + (c.currentAmount || 0), 0);
+      const pending = campaigns.filter((c: any) => c.status === 'DRAFT' || c.status === 'PENDING_VERIFICATION').length;
+      const approved = campaigns.filter((c: any) => c.status === 'ACTIVE' || c.status === 'COMPLETED').length;
+      const rejected = campaigns.filter((c: any) => c.status === 'REJECTED').length;
+      const totalRaised = campaigns.reduce((acc: number, c: any) => acc + (c.currentAmount || 0), 0);
 
       return {
         totalCampaigns: campaigns.length,
@@ -93,23 +96,26 @@ export const adminService = {
     const params: any = {};
     if (status && status !== 'ALL') params.status = status;
     if (risk && risk !== 'ALL') params.risk = risk;
-    const res = await adminAxios.get<{ data: any[] }>('/admin/pending', { params });
-    return res.data;
+    const res = await adminAxios.get('/admin/pending', { params });
+    const payload = res.data;
+    const list = Array.isArray(payload) ? payload : (payload?.data && Array.isArray(payload.data) ? payload.data : []);
+    return { data: list };
   },
 
   getCampaignDetails: async (campaignId: string) => {
-    const res = await adminAxios.get<{ data: any }>(`/campaign/${campaignId}`);
+    const res = await adminAxios.get(`/campaign/${campaignId}`);
     return res.data;
   },
 
   getHistory: async () => {
     try {
-      const res = await adminAxios.get<{ data: any[] }>('/admin/history');
-      return res.data.data;
+      const res = await adminAxios.get('/admin/history');
+      return Array.isArray(res.data) ? res.data : (res.data?.data || []);
     } catch {
       // Fetch verifications list
-      const res = await adminAxios.get<{ data: any[] }>('/admin/pending', { params: { status: 'ALL' } });
-      return res.data.data || [];
+      const res = await adminAxios.get('/admin/pending', { params: { status: 'ALL' } });
+      const payload = res.data;
+      return Array.isArray(payload) ? payload : (payload?.data && Array.isArray(payload.data) ? payload.data : []);
     }
   },
 
