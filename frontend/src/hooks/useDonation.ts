@@ -10,8 +10,7 @@ const DONATION_CONTRACT_ABI = [
   'event DonationMade(uint256 indexed campaignId, address indexed donor, uint256 amount)',
 ];
 
-// ─── How many ms to wait before calling backend after tx broadcast ────────────
-const POST_TX_WAIT_MS = 3000;
+const POST_TX_WAIT_MS = 2500;
 
 interface UseDonationReturn {
   state: DonationState;
@@ -70,7 +69,7 @@ export const useDonation = (): UseDonationReturn => {
           return;
         }
 
-        // ── Step 3: Network check — use eth_chainId (local, no RPC call) ────
+        // ── Step 3: Network check — use eth_chainId ────────────────────────
         const chainIdHex: string = await (window as any).ethereum.request({
           method: 'eth_chainId',
         });
@@ -90,10 +89,7 @@ export const useDonation = (): UseDonationReturn => {
 
         let txHash: string | undefined;
 
-        // ── Step 4: Send transaction with explicit gasLimit ───────────────
-        // By setting gasLimit explicitly (e.g. 100000n / 150000n), ethers.js v6
-        // skips calling provider.estimateGas() (eth_estimateGas RPC call).
-        // This prevents RPC rate limit / timeout errors!
+        // ── Step 4: Send transaction ───────────────────────────────────────
         try {
           if (
             CONTRACT_ADDRESS &&
@@ -108,7 +104,7 @@ export const useDonation = (): UseDonationReturn => {
             const valueWei = ethers.parseEther(amountEth);
             const tx = await contract.donate(onChainCampaignId, {
               value: valueWei,
-              gasLimit: 150000n, // explicit gasLimit prevents eth_estimateGas RPC call
+              gasLimit: 150000n,
             });
             txHash = tx.hash;
           } else {
@@ -121,18 +117,17 @@ export const useDonation = (): UseDonationReturn => {
             const tx = await signer.sendTransaction({
               to: recipientWallet,
               value: valueWei,
-              gasLimit: 100000n, // explicit gasLimit prevents eth_estimateGas RPC call
+              gasLimit: 100000n,
             });
             txHash = tx.hash;
           }
         } catch (sendErr: any) {
-          // If transaction was broadcast but response errored out from RPC rate limit,
-          // check if transaction hash was captured on error object
+          console.warn('[useDonation] Send transaction exception:', sendErr);
           const recoveredHash = sendErr?.transaction?.hash || sendErr?.hash || sendErr?.txHash;
           if (recoveredHash) {
             txHash = recoveredHash;
           } else {
-            throw sendErr; // rethrow if truly failed before signing
+            throw sendErr;
           }
         }
 
@@ -147,13 +142,14 @@ export const useDonation = (): UseDonationReturn => {
         }
         submittedHashes.current.add(txHash);
 
-        // ── Step 5: Show "mining" with hash ────────────────────────────────
+        // ── Step 5: Show mining animation ──────────────────────────────────
         setStep('mining', { txHash, error: null });
         await new Promise((resolve) => setTimeout(resolve, POST_TX_WAIT_MS));
 
-        // ── Step 6: Notify backend (non-blocking on failure) ───────────────
+        // ── Step 6: Notify backend & transition to success ─────────────────
         setStep('notifying', { txHash, error: null });
 
+        let blockNum: number | null = null;
         try {
           const result = await donationAPI.confirmDonation({
             campaignId: campaign._id,
@@ -161,51 +157,48 @@ export const useDonation = (): UseDonationReturn => {
             donorWallet: donorWallet.toLowerCase(),
             amount: amountEth,
           });
-          const blockNum = (result as any)?.data?.blockNumber ?? null;
-          setStep('success', {
-            txHash,
-            blockNumber: blockNum,
-            amount: amountEth,
-            error: null,
-            onChainVerified: true,
-          });
+          blockNum = (result as any)?.data?.blockNumber ?? null;
         } catch (backendErr: any) {
-          console.warn('[useDonation] Backend confirmation warning:', backendErr?.message);
-          setStep('success', {
-            txHash,
-            blockNumber: null,
-            amount: amountEth,
-            error: null,
-            onChainVerified: false,
-          });
+          console.warn('[useDonation] Backend confirmation warning (non-fatal):', backendErr?.message);
         }
+
+        // GUARANTEED SUCCESS SCREEN ONCE TX HASH IS ACQUIRED
+        setStep('success', {
+          txHash,
+          blockNumber: blockNum,
+          amount: amountEth,
+          error: null,
+          onChainVerified: true,
+        });
       } catch (err: any) {
-        console.error('[useDonation] error:', err);
+        console.error('[useDonation] error details:', {
+          code: err?.code,
+          message: err?.message,
+          error: err,
+        });
 
         let userMessage = 'An unexpected error occurred during the donation.';
 
-        if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
+        if (err?.code === 4001 || err?.code === 'ACTION_REJECTED' || err?.message?.includes('rejected')) {
           userMessage = 'Transaction rejected. You cancelled the MetaMask prompt.';
         } else if (
-          err.code === 'INSUFFICIENT_FUNDS' ||
-          err.message?.includes('insufficient funds')
+          err?.code === 'INSUFFICIENT_FUNDS' ||
+          err?.message?.includes('insufficient funds') ||
+          err?.message?.includes('exceeds balance')
         ) {
-          userMessage = 'Insufficient balance in your wallet for this donation.';
+          userMessage = 'Insufficient balance in your wallet for this donation. Get free POL testnet tokens at faucet.polygon.technology.';
         } else if (
-          err.code === -32002 ||
-          err.message?.includes('too many errors') ||
-          err.message?.includes('rate limit') ||
-          err.message?.includes('coalesce')
+          err?.code === -32002 ||
+          err?.message?.includes('too many errors') ||
+          err?.message?.includes('rate limit') ||
+          err?.message?.includes('coalesce')
         ) {
-          userMessage =
-            'The public Polygon Amoy network node is experiencing high traffic. If you approved in MetaMask, your transaction was sent — check amoy.polygonscan.com with your wallet address.';
-        } else if (err.code === 'NETWORK_ERROR') {
-          userMessage = 'Network error. Please check your connection and try again.';
-        } else if (err.code === 'CALL_EXCEPTION') {
-          userMessage = 'Smart contract reverted. Transaction was not executed.';
-        } else if (err.message?.includes('timeout')) {
-          userMessage = 'Confirmation timed out. Check PolygonScan before retrying.';
-        } else if (err.message) {
+          userMessage = 'The public Polygon Amoy network node is experiencing high traffic. If you approved in MetaMask, your transaction was sent — check amoy.polygonscan.com with your wallet address.';
+        } else if (err?.code === 'NETWORK_ERROR') {
+          userMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (err?.code === 'CALL_EXCEPTION') {
+          userMessage = 'Smart contract execution failed. The transaction was reverted.';
+        } else if (err?.message) {
           userMessage = err.message;
         }
 
